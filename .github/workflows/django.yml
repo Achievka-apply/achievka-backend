@@ -36,8 +36,16 @@ jobs:
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/github_actions \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd ${{ secrets.PROJECT_PATH }} \
-             && docker-compose pull web \
-             && docker-compose up -d web"
+          ssh -i ~/.ssh/github_actions ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd ${{ secrets.PROJECT_PATH }}
+
+            # Тянем свежий образ
+            docker-compose pull web
+
+            # Останавливаем и удаляем старый контейнер web
+            docker-compose stop web     || true
+            docker-compose rm -f web     || true
+
+            # Запускаем новый контейнер web
+            docker-compose up -d web
+          EOF
