@@ -8,13 +8,9 @@ on:
 jobs:
   build-push:
     runs-on: ubuntu-latest
-    # Прокидываем output из шага с id=build
-    outputs:
-      image: ${{ steps.build.outputs.image }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -22,37 +18,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - id: build                    # <-- задаём идентификатор
-        name: Build & push image
+      - name: Build & push image
         run: |
           TAG=${{ github.sha }}
-          IMAGE="${{ secrets.DOCKERHUB_USER }}/your-app:$TAG"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          # Записываем IMAGE в output этого шага
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          REPO=${{ secrets.DOCKERHUB_USER }}/your-app
+          # билдим с двумя тегами
+          docker build -t $REPO:$TAG -t $REPO:latest .
+          docker push $REPO:$TAG
+          docker push $REPO:latest
 
-  deploy:
-    needs: build-push
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Настройка SSH-ключа
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          # Записываем приватный ключ в файл на runner’е
           printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions
           chmod 600 ~/.ssh/github_actions
-          # Добавляем отпечаток вашего EC2, чтобы ssh не спрашивал
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Деплой на EC2
+      - name: Deploy on EC2
         run: |
-          # Используем ключ, который только что создали на runner’е
           ssh -i ~/.ssh/github_actions \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "cd ${{ secrets.PROJECT_PATH }} \
-             && IMAGE=${{ needs.build-push.outputs.image }} \
-             && sed -i \"s|image: .*|image:$IMAGE|\" docker-compose.yml \
              && docker-compose pull web \
-             && docker-compose up -d"
+             && docker-compose up -d web"
