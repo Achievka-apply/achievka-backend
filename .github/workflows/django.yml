@@ -37,19 +37,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Setup SSH key
+      - name: Настройка SSH-ключа
         run: |
           mkdir -p ~/.ssh
-          printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions.pub
-          chmod 600 ~/.ssh/github_actions.pub
+          # Записываем приватный ключ в файл на runner’е
+          printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions
+          chmod 600 ~/.ssh/github_actions
+          # Добавляем отпечаток вашего EC2, чтобы ssh не спрашивал
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy on EC2
+      - name: Деплой на EC2
         run: |
-          ssh -i ~/.ssh/github_actions ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            cd ${{ secrets.PROJECT_PATH }}
-            IMAGE=${{ needs.build-push.outputs.image }}
-            sed -i "s|image: .*|image:$IMAGE|" docker-compose.yml
-            docker-compose pull web
-            docker-compose up -d
-          EOF
+          # Используем ключ, который только что создали на runner’е
+          ssh -i ~/.ssh/github_actions \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "cd ${{ secrets.PROJECT_PATH }} \
+             && IMAGE=${{ needs.build-push.outputs.image }} \
+             && sed -i \"s|image: .*|image:$IMAGE|\" docker-compose.yml \
+             && docker-compose pull web \
+             && docker-compose up -d"
