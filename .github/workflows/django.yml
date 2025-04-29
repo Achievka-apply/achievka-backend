@@ -3,7 +3,7 @@ name: CI/CD Docker → EC2
 on:
   push:
     branches: [ main ]
-
+  workflow_dispatch: 
 jobs:
   build-push:
     runs-on: ubuntu-latest
