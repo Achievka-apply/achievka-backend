@@ -21,7 +21,7 @@ jobs:
       - name: Build & push image
         run: |
           TAG=${{ github.sha }}
-          REPO=${{ secrets.DOCKERHUB_USER }}/your-app
+          REPO=${{ secrets.DOCKERHUB_USER }}/achievka_backend
           # билдим с двумя тегами
           docker build -t $REPO:$TAG -t $REPO:latest .
           docker push $REPO:$TAG
