@@ -46,7 +46,7 @@ jobs:
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/github_actions.pub ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh -i ~/.ssh/github_actions ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd ${{ secrets.PROJECT_PATH }}
             IMAGE=${{ needs.build-push.outputs.image }}
             sed -i "s|image: .*|image:$IMAGE|" docker-compose.yml
