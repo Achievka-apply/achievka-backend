@@ -24,8 +24,8 @@ COPY . .
 #RUN python manage.py collectstatic --no-input
 
 # 7. Открываем порт для приложения
-EXPOSE 8000
+EXPOSE 8080
 
 # 8. Команда по умолчанию — запуск Gunicorn
-CMD ["gunicorn", "achievka_backend.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "achievka_backend.wsgi:application", "--bind", "0.0.0.0:8080", "--workers", "3"]
 
