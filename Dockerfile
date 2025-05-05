@@ -1,31 +1,31 @@
-# Базовый образ Python
-FROM python:3.11-slim
+### backend/Dockerfile
 
-# Не сохранять .pyc и не буферизовать вывод
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# 1. Базовый образ — компактный Python
+FROM python:3.10-slim
 
-# Рабочая директория внутри контейнера
-WORKDIR /app
-
-# Установить системные зависимости (для Postgres)
+# 2. Устанавливаем системные зависимости
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Копировать и установить Python-зависимости
-COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+# 3. Рабочая директория
+WORKDIR /app
 
-# Скопировать весь код проекта
+# 4. Копируем зависимости и устанавливаем их
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 5. Копируем весь код приложения
 COPY . .
 
-# Добавить и сделать исполняемым entrypoint
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+# 6. Генерируем статику
+RUN python manage.py collectstatic --no-input
 
-# Запуск скрипта entrypoint при старте контейнера
-ENTRYPOINT ["./entrypoint.sh"]
+# 7. Открываем порт для приложения
+EXPOSE 8000
+
+# 8. Команда по умолчанию — запуск Gunicorn
+CMD ["gunicorn", "achievka_backend.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+
