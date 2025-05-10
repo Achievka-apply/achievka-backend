@@ -1,31 +1,35 @@
-version: '3.8'
 
 services:
-  web:
+  backend:
     image: yessirkegen/achievka_backend:latest
-    restart: always
+    container_name: achievka_backend
+    restart: unless-stopped
     ports:
-      - "80:8000"
+      - "8080:8080"
     env_file:
       - .env
-    depends_on:
-      - db
-      - redis
+
+  frontend:
+    image: yessirkegen/achievka_frontend:latest
+    container_name: achievka_frontend
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    env_file:
+      - .env
 
   db:
-    image: postgres:15-alpine
-    restart: always
+    image: postgres:14
+    container_name: pg_achievka_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    env_file:
-      - .env
-
-  redis:
-    image: redis:7-alpine
-    restart: always
-    volumes:
-      - redisdata:/data
+    ports:
+      - "5432:5432"
 
 volumes:
   pgdata:
-  redisdata:
