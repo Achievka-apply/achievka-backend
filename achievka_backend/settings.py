@@ -69,16 +69,17 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    #"http://localhost:3000",
+    #"http://127.0.0.1:3000",
+    '*'
 ]
 
 # все разрешённые callback’и
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': '<GOOGLE_CLIENT_ID>',
-            'secret':    '<GOOGLE_SECRET>',
+            'client_id': '466267924459-fs938d881mmptootocn43nrp7onfd4lr.apps.googleusercontent.com',
+            'secret':    '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',
             'key':       ''
         },
         'SCOPE': ['email', 'profile'],
