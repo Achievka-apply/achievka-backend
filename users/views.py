@@ -12,21 +12,23 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from .serializers import ProfileSerializer
-from .models import Profile
+from .models import Profile, OnboardingResponse
 from drf_yasg.utils import swagger_auto_schema
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
 #from allauth.socialaccount.providers.microsoft.views import MicrosoftOAuth2Adapter
 from allauth.socialaccount.providers.apple.views import AppleOAuth2Adapter
-
+from rest_framework_simplejwt.views import TokenRefreshView
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
     LogoutSerializer,
     PasswordResetSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    OnboardingResponseSerializer
 )
+
 User = get_user_model()
 
 class CustomRegisterView(APIView):
@@ -39,17 +41,22 @@ class CustomRegisterView(APIView):
             status=status.HTTP_201_CREATED
         )
 
+
 class CustomLoginView(APIView):
+    """
+    POST /api/auth/login/
+    - Валидирует email+password
+    - В ответ возвращает JSON { access: "..."}
+    - Кладёт refresh-токен в HttpOnly cookie
+    """
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = authenticate(
-            request,
-            email=serializer.validated_data['email'],
-            username=serializer.validated_data['email'],
-            password=serializer.validated_data['password']
-        )
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+        # используем username=email, если вы настроили USERNAME_FIELD = 'email'
+        user = authenticate(request, username=email, password=password)
         if not user:
             return Response(
                 {"detail": "Неверные учетные данные"},
@@ -57,11 +64,57 @@ class CustomLoginView(APIView):
             )
 
         refresh = RefreshToken.for_user(user)
-        return Response({
-            "access" : str(refresh.access_token),
-            "refresh": str(refresh)
-        }, status=status.HTTP_200_OK)
+        access = str(refresh.access_token)
+        refresh_str = str(refresh)
 
+        response = Response({"access": access}, status=status.HTTP_200_OK)
+        # Сохраняем refresh в HttpOnly cookie
+        response.set_cookie(
+            key    = 'refresh_token',
+            value  = refresh_str,
+            httponly = True,
+            secure   = not settings.DEBUG,  # True на проде
+            samesite = 'Strict',
+            path     = '/api/auth/token/refresh/'  # доступно только этому пути
+        )
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    """
+    POST /api/auth/token/refresh/
+    - Берёт refresh из HttpOnly cookie
+    - Валидирует его, отдаёт новый access в теле
+    - При ROTATE_REFRESH_TOKENS= True кладёт обновлённый refresh обратно в cookie
+    """
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token не найден в cookie"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Внедряем токен в стандартный сериализатор
+        serializer = self.get_serializer(data={'refresh': refresh_token})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        access     = data['access']
+        new_refresh = data.get('refresh', refresh_token)
+
+        # Формируем ответ
+        response = Response({"access": access}, status=status.HTTP_200_OK)
+        # Обновляем cookie, если ротация включена
+        response.set_cookie(
+            key     = 'refresh_token',
+            value   = str(new_refresh),
+            httponly= True,
+            secure  = not settings.DEBUG,
+            samesite= 'Strict',
+            path    = '/api/auth/token/refresh/'
+        )
+        return response
 class CustomLogoutView(APIView):
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)
@@ -171,3 +224,57 @@ class MicrosoftLogin(SocialLoginView):
 # Apple
 class AppleLogin(SocialLoginView):
     adapter_class = AppleOAuth2Adapter
+
+
+# onboarding/views.py
+
+
+
+class OnboardingResponseCreateView(APIView):
+    """
+    POST /api/auth/responses/
+    Принимает JSON:
+    {
+      "responses": [
+        { "question_index": 0, "answer_text": "Иван Иванов",                "answer_choices": [] },
+        { "question_index": 1, "answer_text": null,                         "answer_choices": ["Instagram"] },
+        { "question_index": 5, "answer_text": null,                         "answer_choices": ["A","B"] },
+        …
+      ]
+    }
+    Сохраняет или обновляет ответы для текущего пользователя.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        payload = request.data.get('responses')
+        if not isinstance(payload, list):
+            return Response(
+                {'detail': 'Нужен список responses'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+        saved = []
+        for item in payload:
+            ser = OnboardingResponseSerializer(data=item)
+            ser.is_valid(raise_exception=True)
+
+            qidx   = ser.validated_data['question_index']
+            text   = ser.validated_data.get('answer_text', None)
+            choices= ser.validated_data.get('answer_choices', [])
+
+            obj, created = OnboardingResponse.objects.update_or_create(
+                user=user,
+                question_index=qidx,
+                defaults={
+                    'answer_text':    text,
+                    'answer_choices': choices
+                }
+            )
+            saved.append({'question_index': qidx, 'id': obj.pk})
+
+        return Response(
+            {'detail': 'Ответы сохранены', 'saved': saved},
+            status=status.HTTP_200_OK
+        )

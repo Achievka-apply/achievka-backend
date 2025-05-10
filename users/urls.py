@@ -9,7 +9,9 @@ from .views import (
     ProfileView,
     GoogleLogin,
     FacebookLogin,
-    AppleLogin
+    AppleLogin,
+    CookieTokenRefreshView,
+    OnboardingResponseCreateView
 )
 
 app_name = 'users'
@@ -25,5 +27,7 @@ urlpatterns = [
     path('facebook/',  FacebookLogin.as_view(),  name='facebook_login'),
    # path('microsoft/', MicrosoftLogin.as_view(), name='microsoft_login'),
     path('apple/',     AppleLogin.as_view(),     name='apple_login'),
+    path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+    path('responses/', OnboardingResponseCreateView.as_view(), name='responses'),
 
 ]

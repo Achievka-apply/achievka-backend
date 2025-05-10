@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordResetForm
-from .models import Profile
+from .models import Profile,OnboardingResponse
 
 User = get_user_model()
 
@@ -64,3 +64,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             'updated_at',
         )
         read_only_fields = ('updated_at',)
+
+# onboarding/serializers.py
+
+
+class OnboardingResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = OnboardingResponse
+        fields = [
+            'question_index',
+            'answer_text',
+            'answer_choices',
+        ]
