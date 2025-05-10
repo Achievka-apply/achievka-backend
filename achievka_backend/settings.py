@@ -36,9 +36,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # THIRD-PARTY APPS
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
-    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -67,6 +67,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
     #"http://localhost:3000",
