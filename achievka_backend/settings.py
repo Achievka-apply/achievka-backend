@@ -73,8 +73,6 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://51.20.95.96",      # ваш фронтенд в браузере
     "http://localhost:3000",    #для локальной разработки
-    "http://51.20.95.96",      # ваш фронтенд в браузере
-
 ]
 CORS_ALLOW_CREDENTIALS = True    # разрешаем куки/credentials
 # все разрешённые callback’и
