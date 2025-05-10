@@ -35,3 +35,14 @@ class LogoutSerializer(serializers.Serializer):
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid            = serializers.CharField()
+    token          = serializers.CharField()
+    new_password1  = serializers.CharField(write_only=True)
+    new_password2  = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password1'] != attrs['new_password2']:
+            raise serializers.ValidationError({"password": "Пароли не совпадают."})
+        return attrs
