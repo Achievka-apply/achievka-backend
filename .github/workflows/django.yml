@@ -3,11 +3,12 @@ name: CI/CD Docker → EC2
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: 
+  workflow_dispatch:
+
 jobs:
   build-push:
     runs-on: ubuntu-latest
-    environment: DOCKERHUB_USER
+
     steps:
       - uses: actions/checkout@v3
 
@@ -20,29 +21,31 @@ jobs:
       - name: Build & push image
         run: |
           TAG=${{ github.sha }}
-          IMAGE=${{ secrets.DOCKERHUB_USER }}/your-app:$TAG
-          docker build -t $IMAGE .
-          docker push $IMAGE
-          echo "::set-output name=image::$IMAGE"
+          REPO=${{ secrets.DOCKERHUB_USER }}/achievka_backend
+          # билдим с двумя тегами
+          docker build -t $REPO:$TAG -t $REPO:latest .
+          docker push $REPO:$TAG
+          docker push $REPO:latest
 
-  deploy:
-    needs: build-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup SSH
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          printf "%s\n" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions
+          chmod 600 ~/.ssh/github_actions
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy on EC2
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh -i ~/.ssh/github_actions ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd ${{ secrets.PROJECT_PATH }}
-            IMAGE=${{ needs.build-push.outputs.image }}
-            # подменяем образ в docker-compose.yml:
-            sed -i "s|image: .*|image: $IMAGE|g" docker-compose.yml
+
+            # Тянем свежий образ
             docker-compose pull web
-            docker-compose up -d
+
+            # Останавливаем и удаляем старый контейнер web
+            docker-compose stop web     || true
+            docker-compose rm -f web     || true
+
+            # Запускаем новый контейнер web
+            docker-compose up -d web
           EOF
