@@ -1,4 +1,4 @@
-from rest_framework import status
+from rest_framework import status, generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -9,6 +9,8 @@ from django.contrib.auth import get_user_model
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
+from .serializers import ProfileSerializer
+from .models import Profile
 
 from .serializers import (
     RegisterSerializer,
@@ -127,3 +129,16 @@ class CustomPasswordResetConfirmView(APIView):
             {"detail": "Пароль успешно сброшен."},
             status=status.HTTP_200_OK
         )
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    """
+    GET  /api/auth/profile/       — получить свой профиль
+    PATCH/PUT  /api/auth/profile/ — обновить поля профиля
+    """
+    serializer_class   = ProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        # Возвращаем профиль текущего аутентифицированного пользователя
+        return self.request.user.profile

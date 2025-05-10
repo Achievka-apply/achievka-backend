@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordResetForm
+from .models import Profile
 
 User = get_user_model()
 
@@ -21,7 +22,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         return User.objects.create_user(
-            username=validated_data['email'],
+            #username=validated_data['email'],
             email=validated_data['email'],
             password=validated_data['password']
         )
@@ -46,3 +47,20 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password1'] != attrs['new_password2']:
             raise serializers.ValidationError({"password": "Пароли не совпадают."})
         return attrs
+
+class ProfileSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        source='user.email', read_only=True
+    )
+
+    class Meta:
+        model  = Profile
+        fields = (
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'avatar',
+            'updated_at',
+        )
+        read_only_fields = ('updated_at',)
