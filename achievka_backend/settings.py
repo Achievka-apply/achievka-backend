@@ -21,8 +21,10 @@ SECRET_KEY ='django-insecure-&j*=9s9c$g(8udy-d769rmbjsqc)e^!6bp+ux-slfog&ay^2d5'
 #DEBUG = os.environ.get('DJANGO_DEBUG')
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '51.20.95.96']
-
+ALLOWED_HOSTS = [
+    "51.20.95.96",    # IP вашего EC2
+    "localhost",
+]
 
 
 # Application definition
@@ -67,9 +69,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://51.20.95.96",      # ваш фронтенд в браузере
+    "http://localhost:3000",    #для локальной разработки
+    "http://51.20.95.96",      # ваш фронтенд в браузере
 
-
+]
+CORS_ALLOW_CREDENTIALS = True    # разрешаем куки/credentials
 # все разрешённые callback’и
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
