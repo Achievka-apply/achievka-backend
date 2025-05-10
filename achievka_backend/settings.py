@@ -37,11 +37,14 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'dj_rest_auth',
+    'dj_rest_auth.registration',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
     # OAuth PROVIDERS
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.apple',
+    'allauth.socialaccount.providers.microsoft',
     # MY APPS
     'users.apps.UsersConfig',
 
@@ -64,6 +67,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
+# все разрешённые callback’и
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': '<GOOGLE_CLIENT_ID>',
+            'secret':    '<GOOGLE_SECRET>',
+            'key':       ''
+        },
+        'SCOPE': ['email', 'profile'],
+    },
+    # аналогично для facebook, apple, microsoft…
+}
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -85,11 +100,16 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SITE_ID = 1
-
-ACCOUNT_EMAIL_REQUIRED = True
+# allauth
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_USERNAME_REQUIRED = False
+
+ACCOUNT_LOGIN_METHODS    = ['email']
+ACCOUNT_SIGNUP_FIELDS    = ['email*', 'password1*', 'password2*']
+
+# dj-rest-auth
+REST_USE_JWT = True
+JWT_AUTH_COOKIE = None
 
 AUTH_USER_MODEL = 'users.User'
 

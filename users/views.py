@@ -1,3 +1,5 @@
+# users/views.py
+
 from rest_framework import status, generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +13,12 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from .serializers import ProfileSerializer
 from .models import Profile
+from drf_yasg.utils import swagger_auto_schema
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
+#from allauth.socialaccount.providers.microsoft.views import MicrosoftOAuth2Adapter
+from allauth.socialaccount.providers.apple.views import AppleOAuth2Adapter
 
 from .serializers import (
     RegisterSerializer,
@@ -142,3 +150,24 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         # Возвращаем профиль текущего аутентифицированного пользователя
         return self.request.user.profile
+
+
+
+
+
+# Google
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+
+# Facebook
+class FacebookLogin(SocialLoginView):
+    adapter_class = FacebookOAuth2Adapter
+
+# Microsoft
+'''
+class MicrosoftLogin(SocialLoginView):
+    adapter_class = MicrosoftOAuth2Adapter
+'''
+# Apple
+class AppleLogin(SocialLoginView):
+    adapter_class = AppleOAuth2Adapter

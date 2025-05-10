@@ -25,7 +25,6 @@ urlpatterns = [
 
     # ваши приложения
     path('api/auth/', include('users.urls', namespace='users')),
-    # … другие include()
 
     # схемы Swagger / Redoc
     re_path(r'^swagger(?P<format>\.json|\.yaml)$',
