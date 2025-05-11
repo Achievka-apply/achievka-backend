@@ -24,6 +24,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "51.20.95.96",    # IP вашего EC2
     "localhost",
+    "achievka.com",
+    "www.achievka.com",
 ]
 
 
