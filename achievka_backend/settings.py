@@ -74,9 +74,12 @@ MIDDLEWARE = [
 ]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "http://51.20.95.96",      # ваш фронтенд в браузере
-    "http://localhost:3000",    #для локальной разработки
-    
+    "https://achievka.com",
+    "http://51.20.95.96",
+    "http://localhost:3000",
+]
+CSRF_TRUSTED_ORIGINS = [
+    "https://achievka.com",
 ]
 CORS_ALLOW_CREDENTIALS = True    # разрешаем куки/credentials
 # все разрешённые callback’и
