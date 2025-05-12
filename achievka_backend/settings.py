@@ -73,7 +73,6 @@ MIDDLEWARE = [
 ]
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
-    "https://achievka.com",
     "http://51.20.95.96",
     "http://localhost:3000",
 ]
