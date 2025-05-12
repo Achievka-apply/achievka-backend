@@ -13,6 +13,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from .serializers import ProfileSerializer
 from .models import Profile, OnboardingResponse
+from django.core.mail import send_mail
 from drf_yasg.utils import swagger_auto_schema
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
@@ -28,6 +29,9 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     OnboardingResponseSerializer
 )
+
+
+from .models import User
 
 User = get_user_model()
 
@@ -115,25 +119,41 @@ class CookieTokenRefreshView(TokenRefreshView):
             path    = '/api/auth/token/refresh/'
         )
         return response
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+
+
 class CustomLogoutView(APIView):
     def post(self, request):
-        serializer = LogoutSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        refresh_token = request.COOKIES.get('refresh_token')
 
-        try:
-            token = RefreshToken(serializer.validated_data['refresh'])
-            token.blacklist()
-        except TokenError:
+        if not refresh_token:
             return Response(
-                {"detail": "Недействительный токен"},
+                {"detail": "Refresh token not found in cookies."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            return Response(
+                {"detail": "Invalid refresh token."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        # Optional: delete cookies if needed
+        response.delete_cookie('refresh_token')
+
+        return response
 
 class CustomPasswordResetView(APIView):
     """
-    Принимает email, проверяет пользователя и возвращает uid + token
+    Принимает email, проверяет пользователя, генерирует uid+token
+    и шлёт письмо на почту с ссылкой на фронтенд.
     """
     def post(self, request):
         serializer = PasswordResetSerializer(data=request.data)
@@ -148,11 +168,35 @@ class CustomPasswordResetView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # 1) генерируем uid и token
         uid   = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
+        # 2) собираем ссылку на фронт
+        reset_link = (
+            f"{settings.FRONTEND_URL}/reset-password"
+            f"?uid={uid}&token={token}"
+        )
+
+        # 3) отправляем письмо
+        subject = "Сброс пароля на Achievka"
+        message = (
+            f"Здравствуйте!\n\n"
+            f"Чтобы сбросить пароль, перейдите по ссылке:\n\n"
+            f"{reset_link}\n\n"
+            f"Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо."
+        )
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=False
+        )
+
+        # 4) подтверждаем отправку письма
         return Response(
-            {"uid": uid, "token": token},
+            {"detail": "Письмо с инструкциями по сбросу пароля отправлено."},
             status=status.HTTP_200_OK
         )
 
