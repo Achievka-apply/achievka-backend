@@ -26,6 +26,8 @@ ALLOWED_HOSTS = [
     "localhost",
     "achievka.com",
     "www.achievka.com",
+    "https://achievka.com",
+
 ]
 
 
