@@ -91,7 +91,7 @@ SOCIALACCOUNT_PROVIDERS = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
@@ -123,7 +123,8 @@ ACCOUNT_SIGNUP_FIELDS    = ['email*', 'password1*', 'password2*']
 
 # dj-rest-auth
 REST_USE_JWT = True
-JWT_AUTH_COOKIE = None
+JWT_AUTH_COOKIE = 'access_token_cookie'
+JWT_AUTH_REFRESH_COOKIE = 'refresh_token_cookie'
 
 AUTH_USER_MODEL = 'users.User'
 
