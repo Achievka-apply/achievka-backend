@@ -81,6 +81,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://achievka.com",
 ]
+SOCIALACCOUNT_ADAPTER = "users.adapters.AutoConnectSocialAccountAdapter"
+
 CORS_ALLOW_CREDENTIALS = True    # разрешаем куки/credentials
 # все разрешённые callback’и
 SOCIALACCOUNT_PROVIDERS = {
