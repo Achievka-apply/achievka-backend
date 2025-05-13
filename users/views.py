@@ -176,7 +176,7 @@ class CustomPasswordResetView(APIView):
 
         # 2) собираем ссылку на фронт
         reset_link = (
-            f"{settings.FRONTEND_URL}/reset-password"
+            "https://achievka.com/reset-password"
             f"?uid={uid}&token={token}"
         )
 
