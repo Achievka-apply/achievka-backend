@@ -259,6 +259,10 @@ class GoogleLogin(SocialLoginView):
     adapter_class  = GoogleOAuth2Adapter
     client_class   = OAuth2Client
     callback_url   = "postmessage"  # тот же, что в Google Cloud Console
+# если хочешь увидеть, что к тебе реально приходит:
+    def post(self, request, *args, **kwargs):
+        print(">>> GoogleLogin got payload:", request.data)
+        return super().post(request, *args, **kwargs)
 
 
 # Facebook
