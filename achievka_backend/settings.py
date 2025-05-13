@@ -118,7 +118,8 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-FRONTEND_URL='https://achievka.com'
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 SITE_ID = 1
 # allauth
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'email'
