@@ -7,6 +7,8 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 environ.Env.read_env()  # читает .env
+#from dotenv import load_dotenv
+#load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -77,14 +79,15 @@ CORS_ALLOWED_ORIGINS = [
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': '<GOOGLE_CLIENT_ID>',
-            'secret':    '<GOOGLE_SECRET>',
+            'client_id': '466267924459-fs938d881mmptootocn43nrp7onfd4lr.apps.googleusercontent.com',
+            'secret':  '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',
             'key':       ''
         },
-        'SCOPE': ['email', 'profile'],
-    },
-    # аналогично для facebook, apple, microsoft…
+        'SCOPE': ['openid', 'email', 'profile'],
+        'AUTH_PARAMS': {'access_type': 'offline'},
+    }
 }
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -107,7 +110,7 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-
+FRONTEND_URL='https://achievka.com'
 SITE_ID = 1
 # allauth
 ACCOUNT_USER_MODEL_USERNAME_FIELD = 'email'
@@ -121,10 +124,15 @@ REST_USE_JWT = True
 JWT_AUTH_COOKIE = None
 
 AUTH_USER_MODEL = 'users.User'
-
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'no-reply@achievka.com'
-
+'''
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.office365.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = 'your_app_password'  # пароль приложения, не обычный!
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+'''
 ROOT_URLCONF = 'achievka_backend.urls'
 
 TEMPLATES = [
