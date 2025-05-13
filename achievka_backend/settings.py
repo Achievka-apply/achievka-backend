@@ -23,8 +23,14 @@ SECRET_KEY ='django-insecure-&j*=9s9c$g(8udy-d769rmbjsqc)e^!6bp+ux-slfog&ay^2d5'
 #DEBUG = os.environ.get('DJANGO_DEBUG')
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = [
+    "51.20.95.96",    # IP вашего EC2
+    "localhost",
+    "achievka.com",
+    "www.achievka.com",
+    "https://achievka.com",
 
+]
 
 
 # Application definition
@@ -38,9 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # THIRD-PARTY APPS
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
-    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -69,18 +75,20 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
-
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
+    "http://51.20.95.96",
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "https://achievka.com",
 ]
-
+CORS_ALLOW_CREDENTIALS = True    # разрешаем куки/credentials
 # все разрешённые callback’и
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
             'client_id': '466267924459-fs938d881mmptootocn43nrp7onfd4lr.apps.googleusercontent.com',
             'secret':  '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',
+
             'key':       ''
         },
         'SCOPE': ['openid', 'email', 'profile'],
@@ -167,7 +175,7 @@ DATABASES = {
         'NAME': 'achievka_db',
         'USER': 'achievka',
         'PASSWORD': 'pg_achievka',
-        'HOST': '0.0.0.0',
+        'HOST': 'db',
         'PORT': '5432'
     }
 }

@@ -81,7 +81,7 @@ class CustomLoginView(APIView):
             httponly = True,
             secure   = not settings.DEBUG,  # True на проде
             samesite = 'Strict',
-            path     = '/api/auth/token/refresh/'  # доступно только этому пути
+           # path     = '/api/auth/token/refresh/'  # доступно только этому пути
         )
         return response
 
