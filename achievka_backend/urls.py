@@ -21,7 +21,8 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('api/admin/', admin.site.urls),
+    path('accounts/', include('allauth.socialaccount.urls')),  # ← здесь
 
     # ваши приложения
     path('api/auth/', include('users.urls', namespace='users')),

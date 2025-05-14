@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     "dev.achievka.com",
     "http://dev.achievka.com",
 
+
 ]
 
 
@@ -79,6 +80,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://51.20.95.96",
     "http://localhost:3000",
     "https://dev.achievka.com",
+
 ]
 SOCIALACCOUNT_ADAPTER = "users.adapters.AutoConnectSocialAccountAdapter"
 
