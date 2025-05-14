@@ -26,9 +26,9 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "51.20.95.96",    # IP вашего EC2
     "localhost",
-    "achievka.com",
-    "www.achievka.com",
-    "https://achievka.com",
+    "dev.achievka.com",
+    "http://dev.achievka.com",
+
 
 ]
 
@@ -79,7 +79,8 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://51.20.95.96",
     "http://localhost:3000",
-    "https://achievka.com",
+    "https://dev.achievka.com",
+
 ]
 SOCIALACCOUNT_ADAPTER = "users.adapters.AutoConnectSocialAccountAdapter"
 
