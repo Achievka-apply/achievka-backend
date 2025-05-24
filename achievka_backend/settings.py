@@ -76,6 +76,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
+# Адреса, с которых можно делать защищённые CSRF-запросы при HTTPS
+CSRF_TRUSTED_ORIGINS = [
+    "https://dev.achievka.com",
+]
+
+# (Опционально, но рекомендовано для HTTPS)
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://51.20.95.96",
