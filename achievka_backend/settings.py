@@ -27,7 +27,7 @@ ALLOWED_HOSTS = [
     "51.20.95.96",    # IP вашего EC2
     "localhost",
     "dev.achievka.com",
-    "http://dev.achievka.com",
+    "https://dev.achievka.com",
 
 
 ]
@@ -76,7 +76,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://51.20.95.96",
     "http://localhost:3000",
