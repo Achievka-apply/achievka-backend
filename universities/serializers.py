@@ -43,7 +43,7 @@ class ScholarshipMiniSerializer(serializers.ModelSerializer):
 # — Detail‐сериализаторы для страниц 5/6/7 —
 
 class UniversityDetailSerializer(serializers.ModelSerializer):
-    scholarships = serializers.StringRelatedField(many=True, source="scholarships")
+    scholarships = serializers.StringRelatedField(many=True)
 
     class Meta:
         model  = University
