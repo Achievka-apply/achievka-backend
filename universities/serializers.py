@@ -10,7 +10,7 @@ from datetime import date
 
 class UniversityMiniSerializer(serializers.ModelSerializer):
     programCount     = serializers.IntegerField(source="programs.count", read_only=True)
-    scholarshipCount = serializers.IntegerField(source="scholarship_set.count", read_only=True)
+    scholarshipCount = serializers.IntegerField(source="scholarships.count", read_only=True)
 
     class Meta:
         model  = University
@@ -20,7 +20,7 @@ class UniversityMiniSerializer(serializers.ModelSerializer):
 
 class ProgramMiniSerializer(serializers.ModelSerializer):
     university     = serializers.SerializerMethodField()
-    hasScholarship = serializers.BooleanField(source="scholarship_set.exists", read_only=True)
+    hasScholarship = serializers.BooleanField(source="scholarships.exists", read_only=True)
 
     def get_university(self, obj):
         return {"id": str(obj.university.id), "name": obj.university.name}
@@ -43,7 +43,7 @@ class ScholarshipMiniSerializer(serializers.ModelSerializer):
 # — Detail‐сериализаторы для страниц 5/6/7 —
 
 class UniversityDetailSerializer(serializers.ModelSerializer):
-    scholarships = serializers.StringRelatedField(many=True, source="scholarship_set")
+    scholarships = serializers.StringRelatedField(many=True, source="scholarships")
 
     class Meta:
         model  = University
@@ -54,7 +54,7 @@ class UniversityDetailSerializer(serializers.ModelSerializer):
 class ProgramDetailSerializer(serializers.ModelSerializer):
     university   = UniversityMiniSerializer(read_only=True)
     days_left    = serializers.SerializerMethodField()
-    hasScholarship = serializers.BooleanField(source="scholarship_set.exists", read_only=True)
+    hasScholarship = serializers.BooleanField(source="scholarships.exists", read_only=True)
 
     def get_days_left(self, obj):
         if not obj.deadline:
