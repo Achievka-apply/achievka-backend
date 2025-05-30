@@ -25,6 +25,7 @@ class Program(models.Model):
     ]
 
     STUDY_FORMAT_CHOICES = University.STUDY_FORMAT_CHOICES
+    description = models.TextField(blank=True)  # или CharField
 
     university   = models.ForeignKey(University, related_name="programs", on_delete=models.CASCADE)
     name         = models.CharField(max_length=255)
