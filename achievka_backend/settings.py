@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
+    'django_filters',
+
     # OAuth PROVIDERS
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
@@ -178,7 +180,9 @@ WSGI_APPLICATION = 'achievka_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-
+MIGRATION_MODULES = {
+    'account': None,
+}
 
 
 
