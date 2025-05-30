@@ -46,9 +46,7 @@ class Scholarship(models.Model):
     university  = models.ForeignKey(
         University,
         related_name='scholarships',
-        on_delete=models.CASCADE,
-        null = True,
-        blank = True
+        on_delete=models.CASCADE
     )
     name        = models.CharField(max_length=255)
     country     = models.CharField(max_length=100)
