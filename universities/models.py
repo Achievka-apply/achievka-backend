@@ -1,3 +1,5 @@
+# universities/models.py
+
 from django.conf import settings
 from django.db import models
 
@@ -31,6 +33,7 @@ class University(models.Model):
     def __str__(self):
         return self.name
 
+
 class Program(models.Model):
     STUDY_TYPE_CHOICES = [
         ("part-time", "Part Time"),
@@ -56,41 +59,52 @@ class Program(models.Model):
     rating        = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
     deadline      = models.DateField(null=True, blank=True)
 
-      # — Поля для требований/экзаменов —
-    min_ielts = models.CharField(max_length=10, blank=True, help_text="Минимальный балл IELTS (если есть)")
-    min_toefl = models.CharField(max_length=10, blank=True, help_text="Минимальный балл TOEFL (если есть)")
-    min_sat = models.CharField(max_length=10, blank=True, help_text="Минимальный балл SAT (если есть)")
-    min_act = models.CharField(max_length=10, blank=True, help_text="Минимальный балл ACT (если есть)")
-    min_gpa = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True,
-                                       help_text="Минимальный GPA (если есть)")
-    min_ib = models.CharField(max_length=20, blank=True,
-                                   help_text="Требование по IB Diploma (например: 'Diploma required' или 'IB 30')")
-    min_cambridge = models.CharField(max_length=20, blank=True,
-                                          help_text="Требование по Cambridge Exam (например: 'Cambridge C1 Advanced')")
+    # — Поля для требований/экзаменов —
+    min_ielts     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл IELTS (если есть)")
+    min_toefl     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл TOEFL (если есть)")
+    min_sat       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл SAT (если есть)")
+    min_act       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл ACT (если есть)")
+    min_gpa       = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True, help_text="Минимальный GPA (если есть)")
+    min_ib        = models.CharField(max_length=20, blank=True, help_text="Требование по IB Diploma (например: 'Diploma required' или 'IB 30')")
+    min_cambridge = models.CharField(max_length=20, blank=True, help_text="Требование по Cambridge Exam (например: 'Cambridge C1 Advanced')")
 
-      # — Ссылка на официальную страницу программы —
+    # — Ссылка на официальную страницу программы —
     official_link = models.URLField(blank=True, help_text="URL официальной страницы программы")
 
     def __str__(self):
         return f"{self.name} @ {self.university.name}"
 
+
 class Scholarship(models.Model):
-    university  = models.ForeignKey(
+    university    = models.ForeignKey(
         University,
-        related_name='scholarships',
+        related_name="scholarships",
         on_delete=models.CASCADE
     )
-    name        = models.CharField(max_length=255)
-    country     = models.CharField(max_length=100)
-    amount      = models.PositiveIntegerField()
-    currency    = models.CharField(max_length=10, default="USD")
-    deadline    = models.DateField()
-    result_date = models.DateField(null=True, blank=True)
-    description = models.TextField(blank=True)
-    min_ielts   = models.CharField(max_length=10, blank=True)
-    min_toefl   = models.CharField(max_length=10, blank=True)
-    min_sat     = models.CharField(max_length=10, blank=True)
-    min_act     = models.CharField(max_length=10, blank=True)
+    name          = models.CharField(max_length=255)
+    country       = models.CharField(max_length=100)
+    amount        = models.PositiveIntegerField()
+    currency      = models.CharField(max_length=10, default="USD")
+    deadline      = models.DateField()
+    result_date   = models.DateField(null=True, blank=True)
+    description   = models.TextField(blank=True)
+
+    # — Минимальные требования/баллы для гранта —
+    min_ielts     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл IELTS (если есть)")
+    min_toefl     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл TOEFL (если есть)")
+    min_sat       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл SAT (если есть)")
+    min_act       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл ACT (если есть)")
+
+    # — Ссылка на официальный сайт гранта —
+    official_link = models.URLField(blank=True, help_text="URL официального сайта гранта")
+
+    # — Связь ManyToMany: какие программы покрывает этот грант —
+    programs      = models.ManyToManyField(
+        Program,
+        related_name="scholarships",
+        blank=True,
+        help_text="Программы, на которые распространяется этот грант"
+    )
 
     def __str__(self):
         return self.name
@@ -101,7 +115,11 @@ class Scholarship(models.Model):
 # -----------------------
 
 class UniversityFavorite(models.Model):
-    user        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fav_universities")
+    user        = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="fav_universities"
+    )
     university  = models.ForeignKey(University, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
 
@@ -110,7 +128,11 @@ class UniversityFavorite(models.Model):
 
 
 class ProgramFavorite(models.Model):
-    user        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fav_programs")
+    user        = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="fav_programs"
+    )
     program     = models.ForeignKey(Program, on_delete=models.CASCADE)
     created_at  = models.DateTimeField(auto_now_add=True)
 
@@ -119,7 +141,11 @@ class ProgramFavorite(models.Model):
 
 
 class ScholarshipFavorite(models.Model):
-    user         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fav_scholarships")
+    user         = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="fav_scholarships"
+    )
     scholarship  = models.ForeignKey(Scholarship, on_delete=models.CASCADE)
     created_at   = models.DateTimeField(auto_now_add=True)
 

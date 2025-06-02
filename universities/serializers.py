@@ -1,8 +1,13 @@
 # universities/serializers.py
+
 from rest_framework import serializers
 from .models import (
-    University, Program, Scholarship,
-    UniversityFavorite, ProgramFavorite, ScholarshipFavorite
+    University,
+    Program,
+    Scholarship,
+    UniversityFavorite,
+    ProgramFavorite,
+    ScholarshipFavorite
 )
 from datetime import date
 
@@ -245,7 +250,7 @@ class ScholarshipDetailSerializer(serializers.ModelSerializer):
     Детальный сериализатор Scholarship:
     – вложенный UniversityMiniSerializer,
     – вложенный список ProgramMiniInScholarshipSerializer,
-    – минимальные требования (min_ielts, min_toefl и т.д.).
+    – минимальные требования (min_ielts, min_toefl и т. д.).
     """
     university = UniversityMiniSerializer(read_only=True)
     programs = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
