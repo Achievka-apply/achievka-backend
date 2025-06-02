@@ -149,6 +149,7 @@ class UniversityMiniInProgramSerializer(serializers.ModelSerializer):
             "name",
             "city",
             "country",
+            "logo",
         ]
 
 
