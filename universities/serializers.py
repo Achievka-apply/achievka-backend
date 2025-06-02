@@ -30,6 +30,7 @@ class UniversityMiniSerializer(serializers.ModelSerializer):
             "study_format",
             "programCount",
             "scholarshipCount",
+            "logo",
         ]
 
 
