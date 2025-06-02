@@ -123,6 +123,7 @@ class UniversityDetailSerializer(serializers.ModelSerializer):
             "study_format",
             "programs",
             "scholarshipCount",
+            "logo",
         ]
 
 
