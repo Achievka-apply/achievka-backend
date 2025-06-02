@@ -256,6 +256,8 @@ class ScholarshipDetailSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "official_link",
+            "amount",
+            "currency",
             "deadline",
             "result_date",
             "min_ielts",
