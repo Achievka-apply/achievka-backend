@@ -111,6 +111,8 @@ class ProgramMiniInUniSerializer(serializers.ModelSerializer):
 class UniversityDetailSerializer(serializers.ModelSerializer):
     programs         = ProgramMiniInUniSerializer(many=True, read_only=True)
     scholarshipCount = serializers.IntegerField(source="scholarships.count", read_only=True)
+    # Добавляем поле для списка мини‐школаршипов
+    scholarships     = ScholarshipMiniSerializer(many=True, read_only=True)
 
     class Meta:
         model  = University
@@ -123,6 +125,7 @@ class UniversityDetailSerializer(serializers.ModelSerializer):
             "study_format",
             "programs",
             "scholarshipCount",
+            "scholarships",  # <-- сюда
             "logo",
         ]
 
