@@ -1,4 +1,5 @@
-#universities/serializers.py
+# universities/serializers.py
+
 from rest_framework import serializers
 from .models import (
     University, Program, Scholarship,
@@ -14,8 +15,12 @@ class UniversityMiniSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = University
-        fields = ["id","name","city","country","description",
-                  "programCount","scholarshipCount","study_format"]
+        fields = [
+            "id","name","city","country","description",
+            "programCount","scholarshipCount","study_format",
+            "logo",      # добавляем логотип
+            "website",   # добавляем сайт
+        ]
 
 
 class ProgramMiniSerializer(serializers.ModelSerializer):
@@ -27,33 +32,41 @@ class ProgramMiniSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Program
-        fields = ["id","name","study_type","study_format",
-                  "city","country","tuition_fee","duration",
-                  "rating","deadline","hasScholarship","university"]
+        fields = [
+            "id","name","study_type","study_format",
+            "city","country","tuition_fee","duration",
+            "rating","deadline","hasScholarship","university"
+        ]
 
 
 class ScholarshipMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Scholarship
-        fields = ["id","name","country","amount","currency",
-                  "deadline","description","result_date",
-                  "min_ielts","min_toefl","min_sat","min_act"]
+        fields = [
+            "id","name","country","amount","currency",
+            "deadline","description","result_date",
+            "min_ielts","min_toefl","min_sat","min_act"
+        ]
 
 
 # — Detail‐сериализаторы для страниц 5/6/7 —
 
 class UniversityDetailSerializer(serializers.ModelSerializer):
     scholarships = serializers.StringRelatedField(many=True)
+    programs     = ProgramMiniSerializer(many=True, read_only=True)  # добавляем вложенный список программ
 
     class Meta:
         model  = University
-        fields = ["id","name","country","city","description",
-                  "study_format","scholarships"]
+        fields = [
+            "id","name","country","city","description",
+            "study_format","scholarships","programs",
+            "logo","website",   # показываем логотип и ссылку
+        ]
 
 
 class ProgramDetailSerializer(serializers.ModelSerializer):
-    university   = UniversityMiniSerializer(read_only=True)
-    days_left    = serializers.SerializerMethodField()
+    university     = UniversityMiniSerializer(read_only=True)
+    days_left      = serializers.SerializerMethodField()
     hasScholarship = serializers.BooleanField(source="scholarships.exists", read_only=True)
 
     def get_days_left(self, obj):
@@ -66,20 +79,24 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Program
-        fields = ["id","name","description","university","city","country",
-                  "study_format","study_type","duration","tuition_fee",
-                  "hasScholarship","deadline","days_left"]
+        fields = [
+            "id","name","description","university","city","country",
+            "study_format","study_type","duration","tuition_fee",
+            "hasScholarship","deadline","days_left"
+        ]
 
 
 class ScholarshipDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Scholarship
-        fields = ["id","name","country","amount","currency","deadline",
-                  "result_date","description","min_ielts","min_toefl",
-                  "min_sat","min_act"]
+        fields = [
+            "id","name","country","amount","currency","deadline",
+            "result_date","description","min_ielts","min_toefl",
+            "min_sat","min_act"
+        ]
 
 
-# — Сериализаторы избранного —
+# — Сериализаторы избранного — (оставляем без изменений) ...
 
 class UniversityFavoriteSerializer(serializers.ModelSerializer):
     university    = UniversityMiniSerializer(read_only=True)
