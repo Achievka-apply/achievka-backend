@@ -246,7 +246,7 @@ class UniversityMiniInScholarshipSerializer(serializers.ModelSerializer):
 
 
 class ScholarshipDetailSerializer(serializers.ModelSerializer):
-    universities = UniversityMiniSerializer(many=True, source="universities", read_only=True)
+    universities = UniversityMiniSerializer(many=True)
     programs = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
 
     class Meta:
