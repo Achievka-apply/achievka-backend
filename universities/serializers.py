@@ -65,14 +65,13 @@ class ProgramMiniSerializer(serializers.ModelSerializer):
 
 
 class ScholarshipMiniSerializer(serializers.ModelSerializer):
-    university = serializers.SerializerMethodField()
+    universities = serializers.SerializerMethodField()
+    def get_universities(self, obj):
 
-    def get_university(self, obj):
-        return {
-            "id": str(obj.university.id),
-            "name": obj.university.name
-        }
-
+        return [
+                        {"id": str(u.id), "name": u.name}
+             for u in obj.universities.all()
+            ]
     class Meta:
         model  = Scholarship
         fields = [
@@ -87,7 +86,7 @@ class ScholarshipMiniSerializer(serializers.ModelSerializer):
             "min_toefl",
             "min_sat",
             "min_act",
-            "university",
+            "universities",
         ]
 
 
@@ -247,9 +246,8 @@ class UniversityMiniInScholarshipSerializer(serializers.ModelSerializer):
 
 
 class ScholarshipDetailSerializer(serializers.ModelSerializer):
-    university    = UniversityMiniSerializer(read_only=True)
-    programs      = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
-    universities  = serializers.SerializerMethodField(read_only=True)
+    universities = UniversityMiniSerializer(many=True, source="universities", read_only=True)
+    programs = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
 
     class Meta:
         model  = Scholarship
@@ -264,21 +262,10 @@ class ScholarshipDetailSerializer(serializers.ModelSerializer):
             "min_toefl",
             "min_sat",
             "min_act",
-            "university",
+            "extra_requirements",
             "programs",
             "universities",
         ]
-
-    def get_universities(self, obj):
-        programs = obj.programs.all().select_related("university")
-        seen_ids = set()
-        unique_unis = []
-        for program in programs:
-            uni = program.university
-            if uni.id not in seen_ids:
-                seen_ids.add(uni.id)
-                unique_unis.append(uni)
-        return UniversityMiniInScholarshipSerializer(unique_unis, many=True).data
 
 
 # -----------------------------

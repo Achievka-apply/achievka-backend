@@ -76,24 +76,26 @@ class Program(models.Model):
 
 
 class Scholarship(models.Model):
-    university    = models.ForeignKey(
-        University,
-        related_name="scholarships",
-        on_delete=models.CASCADE
-    )
-    name          = models.CharField(max_length=255)
-    country       = models.CharField(max_length=100)
-    amount        = models.PositiveIntegerField()
-    currency      = models.CharField(max_length=10, default="USD")
-    deadline      = models.DateField()
-    result_date   = models.DateField(null=True, blank=True)
-    description   = models.TextField(blank=True)
+    name = models.CharField(max_length=255)
+    country = models.CharField(max_length=100)
+    amount = models.PositiveIntegerField()
+    currency = models.CharField(max_length=10, default="USD")
+    deadline = models.DateField()
+    result_date = models.DateField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    extra_requirements = models.TextField(blank=True)
 
-    # — Минимальные требования/баллы для гранта —
-    min_ielts     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл IELTS (если есть)")
-    min_toefl     = models.CharField(max_length=10, blank=True, help_text="Минимальный балл TOEFL (если есть)")
-    min_sat       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл SAT (если есть)")
-    min_act       = models.CharField(max_length=10, blank=True, help_text="Минимальный балл ACT (если есть)")
+    min_ielts = models.CharField(max_length=10, blank=True)
+    min_toefl = models.CharField(max_length=10, blank=True)
+    min_sat = models.CharField(max_length=10, blank=True)
+    min_act = models.CharField(max_length=10, blank=True)
+
+      # — Связь «один грант → много университетов» —
+    universities = models.ManyToManyField(
+            University,
+            related_name = "scholarships",
+            blank = True,
+            help_text = "Университеты, в которые действует этот грант")
 
     # — Ссылка на официальный сайт гранта —
     official_link = models.URLField(blank=True, help_text="URL официального сайта гранта")
