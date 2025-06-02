@@ -14,6 +14,20 @@ class University(models.Model):
     description  = models.TextField(blank=True)
     study_format = models.CharField(max_length=10, choices=STUDY_FORMAT_CHOICES)
 
+    # Новые поля:
+    logo    = models.ImageField(
+        upload_to="university_logos/",    # директория внутри MEDIA_ROOT
+        null=True,
+        blank=True,
+        help_text="PNG-логотип университета"
+    )
+    website = models.URLField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="Официальный сайт университета"
+    )
+
     def __str__(self):
         return self.name
 
