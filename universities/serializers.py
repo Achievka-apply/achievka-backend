@@ -11,17 +11,16 @@ from .models import (
 )
 from datetime import date
 
-
 # -----------------------------
 # Mini‐сериализаторы для списков карточек
 # -----------------------------
 
 class UniversityMiniSerializer(serializers.ModelSerializer):
-    programCount = serializers.IntegerField(source="programs.count", read_only=True)
+    programCount     = serializers.IntegerField(source="programs.count", read_only=True)
     scholarshipCount = serializers.IntegerField(source="scholarships.count", read_only=True)
 
     class Meta:
-        model = University
+        model  = University
         fields = [
             "id",
             "name",
@@ -35,7 +34,7 @@ class UniversityMiniSerializer(serializers.ModelSerializer):
 
 
 class ProgramMiniSerializer(serializers.ModelSerializer):
-    university = serializers.SerializerMethodField()
+    university     = serializers.SerializerMethodField()
     hasScholarship = serializers.SerializerMethodField()
 
     def get_university(self, obj):
@@ -45,11 +44,10 @@ class ProgramMiniSerializer(serializers.ModelSerializer):
         }
 
     def get_hasScholarship(self, obj):
-        # Возвращаем "Yes" или "No"
         return "Yes" if obj.scholarships.exists() else "No"
 
     class Meta:
-        model = Program
+        model  = Program
         fields = [
             "id",
             "name",
@@ -76,7 +74,7 @@ class ScholarshipMiniSerializer(serializers.ModelSerializer):
         }
 
     class Meta:
-        model = Scholarship
+        model  = Scholarship
         fields = [
             "id",
             "name",
@@ -98,10 +96,6 @@ class ScholarshipMiniSerializer(serializers.ModelSerializer):
 # -----------------------------
 
 class ProgramMiniInUniSerializer(serializers.ModelSerializer):
-    """
-    Вложенный мини‐сериализатор Program (для UniversityDetailSerializer).
-    """
-
     class Meta:
         model = Program
         fields = [
@@ -115,16 +109,11 @@ class ProgramMiniInUniSerializer(serializers.ModelSerializer):
 
 
 class UniversityDetailSerializer(serializers.ModelSerializer):
-    """
-    Детальный сериализатор University:
-    – список программ (через ProgramMiniInUniSerializer),
-    – количество грантов.
-    """
-    programs = ProgramMiniInUniSerializer(many=True, read_only=True)
+    programs         = ProgramMiniInUniSerializer(many=True, read_only=True)
     scholarshipCount = serializers.IntegerField(source="scholarships.count", read_only=True)
 
     class Meta:
-        model = University
+        model  = University
         fields = [
             "id",
             "name",
@@ -138,10 +127,6 @@ class UniversityDetailSerializer(serializers.ModelSerializer):
 
 
 class UniversityMiniInProgramSerializer(serializers.ModelSerializer):
-    """
-    Вложенный мини‐сериализатор University (для ProgramDetailSerializer).
-    """
-
     class Meta:
         model = University
         fields = [
@@ -153,20 +138,36 @@ class UniversityMiniInProgramSerializer(serializers.ModelSerializer):
         ]
 
 
+class ScholarshipMiniInProgramSerializer(serializers.ModelSerializer):
+    """
+    Мини‐сериализатор Scholarship для вложения в ProgramDetailSerializer.
+    """
+    class Meta:
+        model = Scholarship
+        fields = [
+            "id",
+            "name",
+            "amount",
+            "currency",
+            "deadline",
+        ]
+
+
 class ProgramDetailSerializer(serializers.ModelSerializer):
     """
-    Детальный сериализатор Program.
-    Добавлены:
+    Детальный сериализатор Program:
     - hasScholarship: "Yes" или "No"
-    - days_left: формат "X days left" или "Deadline passed"/"Deadline: YYYY-MM-DD (est.)"
-    - exams: блок всех требований (IELTS, TOEFL, SAT, ACT, GPA, IB Diploma, Cambridge Exam)
-    - official_link: ссылка на страницу программы
+    - days_left: "X days left"/"Deadline passed"/"Deadline: YYYY-MM-DD (est.)"
+    - exams: требования (IELTS, TOEFL, SAT, ACT, GPA, IB, Cambridge)
+    - official_link: URL
+    - scholarships: список связанных грантов (через ScholarshipMiniInProgramSerializer)
     """
-    university = UniversityMiniInProgramSerializer(read_only=True)
+    university     = UniversityMiniInProgramSerializer(read_only=True)
     hasScholarship = serializers.SerializerMethodField()
-    days_left = serializers.SerializerMethodField()
-    exams = serializers.SerializerMethodField()
-    official_link = serializers.CharField(read_only=True)
+    days_left      = serializers.SerializerMethodField()
+    exams          = serializers.SerializerMethodField()
+    official_link  = serializers.CharField(read_only=True)
+    scholarships   = ScholarshipMiniInProgramSerializer(many=True, read_only=True)
 
     def get_hasScholarship(self, obj):
         return "Yes" if obj.scholarships.exists() else "No"
@@ -174,7 +175,6 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
     def get_days_left(self, obj):
         if not obj.deadline:
             return None
-
         delta = (obj.deadline - date.today()).days
         if delta < 0:
             return f"Deadline passed: {obj.deadline.isoformat()}"
@@ -183,15 +183,7 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
         return f"Deadline: {obj.deadline.isoformat()} (est.)"
 
     def get_exams(self, obj):
-        """
-        Собираем блок требований:
-        - IELTS, TOEFL, SAT, ACT (CharField)
-        - GPA (DecimalField)
-        - IB Diploma (CharField)
-        - Cambridge Exam (CharField)
-        """
         result = {}
-
         if obj.min_ielts:
             result["IELTS"] = obj.min_ielts
         if obj.min_toefl:
@@ -206,11 +198,10 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
             result["IB Diploma"] = obj.min_ib
         if obj.min_cambridge:
             result["Cambridge Exam"] = obj.min_cambridge
-
         return result if result else None
 
     class Meta:
-        model = Program
+        model  = Program
         fields = [
             "id",
             "name",
@@ -228,14 +219,11 @@ class ProgramDetailSerializer(serializers.ModelSerializer):
             "hasScholarship",
             "exams",
             "official_link",
+            "scholarships",
         ]
 
 
 class ProgramMiniInScholarshipSerializer(serializers.ModelSerializer):
-    """
-    Вложенный мини‐сериализатор Program (для ScholarshipDetailSerializer).
-    """
-
     class Meta:
         model = Program
         fields = [
@@ -246,25 +234,30 @@ class ProgramMiniInScholarshipSerializer(serializers.ModelSerializer):
         ]
 
 
+class UniversityMiniInScholarshipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = University
+        fields = [
+            "id",
+            "name",
+            "city",
+            "country",
+            "logo",
+        ]
+
+
 class ScholarshipDetailSerializer(serializers.ModelSerializer):
-    """
-    Детальный сериализатор Scholarship:
-    – вложенный UniversityMiniSerializer,
-    – вложенный список ProgramMiniInScholarshipSerializer,
-    – минимальные требования (min_ielts, min_toefl и т. д.).
-    """
-    university = UniversityMiniSerializer(read_only=True)
-    programs = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
+    university    = UniversityMiniSerializer(read_only=True)
+    programs      = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
+    universities  = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
-        model = Scholarship
+        model  = Scholarship
         fields = [
             "id",
             "name",
             "description",
             "official_link",
-            "amount",
-            "currency",
             "deadline",
             "result_date",
             "min_ielts",
@@ -273,15 +266,27 @@ class ScholarshipDetailSerializer(serializers.ModelSerializer):
             "min_act",
             "university",
             "programs",
+            "universities",
         ]
+
+    def get_universities(self, obj):
+        programs = obj.programs.all().select_related("university")
+        seen_ids = set()
+        unique_unis = []
+        for program in programs:
+            uni = program.university
+            if uni.id not in seen_ids:
+                seen_ids.add(uni.id)
+                unique_unis.append(uni)
+        return UniversityMiniInScholarshipSerializer(unique_unis, many=True).data
 
 
 # -----------------------------
-# Сериализаторы избранного (не изменились)
+# Сериализаторы избранного
 # -----------------------------
 
 class UniversityFavoriteSerializer(serializers.ModelSerializer):
-    university = UniversityMiniSerializer(read_only=True)
+    university    = UniversityMiniSerializer(read_only=True)
     university_id = serializers.PrimaryKeyRelatedField(
         queryset=University.objects.all(),
         source="university",
@@ -289,12 +294,12 @@ class UniversityFavoriteSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = UniversityFavorite
+        model  = UniversityFavorite
         fields = ["id", "university", "university_id", "created_at"]
 
 
 class ProgramFavoriteSerializer(serializers.ModelSerializer):
-    program = ProgramMiniSerializer(read_only=True)
+    program    = ProgramMiniSerializer(read_only=True)
     program_id = serializers.PrimaryKeyRelatedField(
         queryset=Program.objects.all(),
         source="program",
@@ -302,12 +307,12 @@ class ProgramFavoriteSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = ProgramFavorite
+        model  = ProgramFavorite
         fields = ["id", "program", "program_id", "created_at"]
 
 
 class ScholarshipFavoriteSerializer(serializers.ModelSerializer):
-    scholarship = ScholarshipMiniSerializer(read_only=True)
+    scholarship    = ScholarshipMiniSerializer(read_only=True)
     scholarship_id = serializers.PrimaryKeyRelatedField(
         queryset=Scholarship.objects.all(),
         source="scholarship",
@@ -315,5 +320,5 @@ class ScholarshipFavoriteSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = ScholarshipFavorite
+        model  = ScholarshipFavorite
         fields = ["id", "scholarship", "scholarship_id", "created_at"]
