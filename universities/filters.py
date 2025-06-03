@@ -1,62 +1,135 @@
-#universities/filters.py
 from django.db.models import Count
 from django_filters import rest_framework as filters
 from .models import University, Program, Scholarship
 
 class UniversityFilter(filters.FilterSet):
+    """
+    1) Поиск (частичное совпадение по имени) → ?name=<строка>
+    2) Фильтр по списку стран → ?countries=USA,Canada,Russia
+    3) Фильтр по списку городов  → ?cities=London,Astana,Paris
+    4) Фильтр по формату (online/campus/hybrid) → ?studyFormat=online
+    5) Фильтр «hasScholarship» → ?hasScholarship=True/False
+    """
     name           = filters.CharFilter(field_name="name", lookup_expr="icontains")
     countries      = filters.BaseInFilter(field_name="country", lookup_expr="in")
     cities         = filters.BaseInFilter(field_name="city", lookup_expr="in")
-    studyFormat    = filters.CharFilter(field_name="study_format")
+    studyFormat    = filters.CharFilter(field_name="study_format", lookup_expr="exact")
     hasScholarship = filters.BooleanFilter(method="filter_has_scholarship")
 
-    def filter_has_scholarship(self, qs, name, value):
-        return qs.annotate(
-            cnt=Count("scholarship")
-        ).filter(cnt__gt=0 if value else 0)
+    def filter_has_scholarship(self, queryset, name, value):
+        """
+        Если value=True, возвращаем университеты, у которых есть хотя бы одна программа с любым грантом.
+        Если value=False, — все университеты, у которых нет ни одного связанного гранта (ни на одну программу).
+        """
+        # Достаём все университеты и аннотируем число связанных грантов через программы:
+        #   1. JOIN programs → scholarship (через related_name="scholarships")
+        #   2. Считаем COUNT("programs__scholarships")
+        qs = queryset.annotate(
+            num_total_scholarships=Count("programs__scholarships")
+        )
+        if value:
+            # отбросим те, у кого нет ни одного связанного гранта
+            return qs.filter(num_total_scholarships__gt=0)
+        else:
+            # оставим только те, у кого ровно 0
+            return qs.filter(num_total_scholarships=0)
 
     class Meta:
         model  = University
-        fields = ["name","countries","cities","studyFormat","hasScholarship"]
+        fields = [
+            "name",
+            "countries",
+            "cities",
+            "studyFormat",
+            "hasScholarship",
+        ]
 
 
 class ProgramFilter(filters.FilterSet):
-    name            = filters.CharFilter(field_name="name", lookup_expr="icontains")
-    country         = filters.CharFilter(field_name="country")
-    city            = filters.CharFilter(field_name="city")
-    tuitionMin      = filters.NumberFilter(field_name="tuition_fee", lookup_expr="gte")
-    tuitionMax      = filters.NumberFilter(field_name="tuition_fee", lookup_expr="lte")
-    duration        = filters.CharFilter(field_name="duration")
-    studyFormat     = filters.CharFilter(field_name="study_format")
-    studyType       = filters.CharFilter(field_name="study_type")
-    deadlineFrom    = filters.DateFilter(field_name="deadline", lookup_expr="gte")
-    deadlineTo      = filters.DateFilter(field_name="deadline", lookup_expr="lte")
-    hasScholarship  = filters.BooleanFilter(method="filter_has_scholarship")
-    sortBy          = filters.OrderingFilter(
-        fields=(("tuition_fee","tuition_fee"),("deadline","deadline"))
-    )
+    """
+    1) Поиск по названию → ?name=<строка>
+    2) Фильтр по стране → ?country=<строка>
+    3) Фильтр по городу  → ?city=<строка>
+    4) Диапазон стоимости → ?tuitionMin=<число>&tuitionMax=<число>
+    5) Фильтр по продолжительности → ?duration=<строка>
+    6) Фильтр по формату → ?studyFormat=online
+    7) Фильтр по типу   → ?studyType=full-time
+    8) Даты дедлайнов   → ?deadlineFrom=2025-06-01&deadlineTo=2025-12-31
+    9) Фильтр hasScholarship → ?hasScholarship=True/False
+    10) Sorting (осуществляется не здесь, а в ViewSet через OrderingFilter)
+    """
+    name           = filters.CharFilter(field_name="name", lookup_expr="icontains")
+    country        = filters.CharFilter(field_name="country", lookup_expr="icontains")
+    city           = filters.CharFilter(field_name="city", lookup_expr="icontains")
+    tuitionMin     = filters.NumberFilter(field_name="tuition_fee", lookup_expr="gte")
+    tuitionMax     = filters.NumberFilter(field_name="tuition_fee", lookup_expr="lte")
+    duration       = filters.CharFilter(field_name="duration", lookup_expr="icontains")
+    studyFormat    = filters.CharFilter(field_name="study_format", lookup_expr="exact")
+    studyType      = filters.CharFilter(field_name="study_type", lookup_expr="exact")
+    deadlineFrom   = filters.DateFilter(field_name="deadline", lookup_expr="gte")
+    deadlineTo     = filters.DateFilter(field_name="deadline", lookup_expr="lte")
+    hasScholarship = filters.BooleanFilter(method="filter_has_scholarship")
 
-    def filter_has_scholarship(self, qs, name, value):
-        return qs.filter(scholarship__isnull=(not value))
+    def filter_has_scholarship(self, queryset, name, value):
+        """
+        Если value=True, оставляем только программы, у которых есть хотя бы один связанный Scholarship.
+        Если False, — только те, у которых нет ни одного гранта.
+        """
+        if value:
+            return queryset.filter(scholarships__isnull=False).distinct()
+        else:
+            return queryset.filter(scholarships__isnull=True)
 
     class Meta:
         model  = Program
-        fields = ["name","country","city","tuitionMin","tuitionMax",
-                  "duration","studyFormat","studyType","deadlineFrom","deadlineTo","hasScholarship"]
+        fields = [
+            "name",
+            "country",
+            "city",
+            "tuitionMin",
+            "tuitionMax",
+            "duration",
+            "studyFormat",
+            "studyType",
+            "deadlineFrom",
+            "deadlineTo",
+            "hasScholarship",
+        ]
 
 
 class ScholarshipFilter(filters.FilterSet):
-    amountMin             = filters.NumberFilter(field_name="amount", lookup_expr="gte")
-    amountMax             = filters.NumberFilter(field_name="amount", lookup_expr="lte")
-    submissionDeadlineFrom= filters.DateFilter(field_name="deadline", lookup_expr="gte")
-    submissionDeadlineTo  = filters.DateFilter(field_name="deadline", lookup_expr="lte")
-    hasResultDate         = filters.BooleanFilter(field_name="result_date", lookup_expr="isnull", exclude=True)
-    minIELTS              = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
-    minTOEFL              = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
-    minSAT                = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
-    minACT                = filters.CharFilter(field_name="min_act", lookup_expr="gte")
+    """
+    1) Диапазон по сумме → ?amountMin=<число>&amountMax=<число>
+    2) Даты дедлайна (от/до) → ?submissionDeadlineFrom=2025-06-01&submissionDeadlineTo=2025-12-31
+    3) Фильтр hasResultDate (есть ли result_date) → ?hasResultDate=True/False
+    4) Минимальные требования по экзаменам →
+         ?minIELTS=<строка>&minTOEFL=<строка>&minSAT=<строка>&minACT=<строка>
+    """
+    amountMin              = filters.NumberFilter(field_name="amount", lookup_expr="gte")
+    amountMax              = filters.NumberFilter(field_name="amount", lookup_expr="lte")
+    submissionDeadlineFrom = filters.DateFilter(field_name="deadline", lookup_expr="gte")
+    submissionDeadlineTo   = filters.DateFilter(field_name="deadline", lookup_expr="lte")
+    # Если hasResultDate=True, хотим только те, у которых result_date НЕ NULL
+    # Для BooleanFilter указываем lookup_expr="isnull" и exclude=True,
+    #  чтобы фактически он работал как «NOT isnull» при True
+    hasResultDate          = filters.BooleanFilter(
+        field_name="result_date", lookup_expr="isnull", exclude=True
+    )
+    minIELTS               = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
+    minTOEFL               = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
+    minSAT                 = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
+    minACT                 = filters.CharFilter(field_name="min_act", lookup_expr="gte")
 
     class Meta:
         model  = Scholarship
-        fields = ["amountMin","amountMax","submissionDeadlineFrom",
-                  "submissionDeadlineTo","hasResultDate","minIELTS","minTOEFL","minSAT","minACT"]
+        fields = [
+            "amountMin",
+            "amountMax",
+            "submissionDeadlineFrom",
+            "submissionDeadlineTo",
+            "hasResultDate",
+            "minIELTS",
+            "minTOEFL",
+            "minSAT",
+            "minACT",
+        ]
