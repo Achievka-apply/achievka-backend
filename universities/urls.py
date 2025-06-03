@@ -1,4 +1,5 @@
 # universities/urls.py
+
 from django.urls import path
 from .views import (
     UniversityViewSet,
@@ -12,43 +13,83 @@ from .views import (
 app_name = 'universities'
 
 urlpatterns = [
-    # --- Universities ---
+    # ======================
+    #      Universities
+    # ======================
+
+    # Список университетов (with filters, search, ordering)
     path(
         'universities/',
         UniversityViewSet.as_view({'get': 'list'}),
         name='university-list'
     ),
+    # Детали конкретного университета
     path(
         'universities/<int:pk>/',
         UniversityViewSet.as_view({'get': 'retrieve'}),
         name='university-detail'
     ),
+    # Autocomplete (подсказки при вводе текста для поля name)
+    path(
+        'universities/autocomplete/',
+        UniversityViewSet.as_view({'get': 'autocomplete'}),
+        name='university-autocomplete'
+    ),
 
-    # --- Programs ---
+
+    # ======================
+    #       Programs
+    # ======================
+
+    # Список программ (with filters, search, ordering)
     path(
         'programs/',
         ProgramViewSet.as_view({'get': 'list'}),
         name='program-list'
     ),
+    # Детали конкретной программы
     path(
         'programs/<int:pk>/',
         ProgramViewSet.as_view({'get': 'retrieve'}),
         name='program-detail'
     ),
+    # Autocomplete по программам
+    path(
+        'programs/autocomplete/',
+        ProgramViewSet.as_view({'get': 'autocomplete'}),
+        name='program-autocomplete'
+    ),
 
-    # --- Scholarships ---
+
+    # ======================
+    #     Scholarships
+    # ======================
+
+    # Список грантов (with filters, search, ordering)
     path(
         'scholarships/',
         ScholarshipViewSet.as_view({'get': 'list'}),
         name='scholarship-list'
     ),
+    # Детали конкретного гранта
     path(
         'scholarships/<int:pk>/',
         ScholarshipViewSet.as_view({'get': 'retrieve'}),
         name='scholarship-detail'
     ),
+    # Autocomplete по грантам
+    path(
+        'scholarships/autocomplete/',
+        ScholarshipViewSet.as_view({'get': 'autocomplete'}),
+        name='scholarship-autocomplete'
+    ),
 
-    # --- Favorites: Universities ---
+
+    # ======================
+    #  Favorites: Universities
+    # ======================
+
+    # Получить список избранных университетов / добавить новый favorite
     path(
         'favorites/universities/',
         UniversityFavoriteViewSet.as_view({
@@ -57,13 +98,19 @@ urlpatterns = [
         }),
         name='fav-university-list'
     ),
+    # Удалить университет из избранного по его pk
     path(
         'favorites/universities/<int:pk>/',
         UniversityFavoriteViewSet.as_view({'delete': 'destroy'}),
         name='fav-university-detail'
     ),
 
-    # --- Favorites: Programs ---
+
+    # ======================
+    #   Favorites: Programs
+    # ======================
+
+    # Список избранных программ / добавить новую
     path(
         'favorites/programs/',
         ProgramFavoriteViewSet.as_view({
@@ -72,13 +119,19 @@ urlpatterns = [
         }),
         name='fav-program-list'
     ),
+    # Удалить программу из избранного по её pk
     path(
         'favorites/programs/<int:pk>/',
         ProgramFavoriteViewSet.as_view({'delete': 'destroy'}),
         name='fav-program-detail'
     ),
 
-    # --- Favorites: Scholarships ---
+
+    # ======================
+    #  Favorites: Scholarships
+    # ======================
+
+    # Список избранных грантов / добавить новый
     path(
         'favorites/scholarships/',
         ScholarshipFavoriteViewSet.as_view({
@@ -87,6 +140,7 @@ urlpatterns = [
         }),
         name='fav-scholarship-list'
     ),
+    # Удалить грант из избранного по его pk
     path(
         'favorites/scholarships/<int:pk>/',
         ScholarshipFavoriteViewSet.as_view({'delete': 'destroy'}),
