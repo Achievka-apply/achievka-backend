@@ -41,18 +41,21 @@ class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
         → возвращает до 10 совпадений по name для автоподсказок
     """
     queryset = University.objects.annotate(
-        count_programs=Count("programs", distinct=True),
-        min_program_fee=Min("programs__tuition_fee")
+        count_programs   = Count("programs", distinct=True),
+        min_program_fee  = Min("programs__tuition_fee"),
+        # Аннотация scholarshipCount: сколько уникальных грантов связано
+        # через связанные программы (Program.scholarships)
+        scholarshipCount = Count("programs__scholarships", distinct=True),
     ).all()
 
-    # Возвращаем именно ваш FilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = UniversityFilter
     search_fields   = ["name", "city", "country"]
     ordering_fields = [
-        "name",             # алфавит (A-Z или Z-A)
-        "min_program_fee",  # «цена» — минимальная стоимость программы
-        "count_programs"    # количество программ
+        "name",              # алфавит (A-Z или Z-A)
+        "min_program_fee",   # «цена» — минимальная стоимость программы
+        "count_programs",    # количество программ
+        "scholarshipCount",  # количество грантов (через программы)
     ]
     ordering = ["name"]
 
@@ -69,8 +72,6 @@ class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
         matches = University.objects.filter(name__icontains=q)[:10]
         data = [{"id": uni.id, "name": uni.name} for uni in matches]
         return Response({"results": data}, status=status.HTTP_200_OK)
-
-
 # ============================
 #      ProgramViewSet
 # ============================
