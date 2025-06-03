@@ -1,5 +1,3 @@
-# universities/serializers.py
-
 from rest_framework import serializers
 from .models import (
     University,
@@ -67,12 +65,13 @@ class ProgramMiniSerializer(serializers.ModelSerializer):
 
 class ScholarshipMiniSerializer(serializers.ModelSerializer):
     universities = serializers.SerializerMethodField()
-    def get_universities(self, obj):
 
+    def get_universities(self, obj):
         return [
-                        {"id": str(u.id), "name": u.name}
-             for u in obj.universities.all()
-            ]
+            {"id": str(u.id), "name": u.name}
+            for u in obj.universities.all()
+        ]
+
     class Meta:
         model  = Scholarship
         fields = [
@@ -111,7 +110,6 @@ class ProgramMiniInUniSerializer(serializers.ModelSerializer):
 class UniversityDetailSerializer(serializers.ModelSerializer):
     programs         = ProgramMiniInUniSerializer(many=True, read_only=True)
     scholarshipCount = serializers.IntegerField(source="scholarships.count", read_only=True)
-    # Добавляем поле для списка мини‐школаршипов
     scholarships     = ScholarshipMiniSerializer(many=True, read_only=True)
 
     class Meta:
@@ -125,7 +123,7 @@ class UniversityDetailSerializer(serializers.ModelSerializer):
             "study_format",
             "programs",
             "scholarshipCount",
-            "scholarships",  # <-- сюда
+            "scholarships",
             "logo",
         ]
 
@@ -143,9 +141,6 @@ class UniversityMiniInProgramSerializer(serializers.ModelSerializer):
 
 
 class ScholarshipMiniInProgramSerializer(serializers.ModelSerializer):
-    """
-    Мини‐сериализатор Scholarship для вложения в ProgramDetailSerializer.
-    """
     class Meta:
         model = Scholarship
         fields = [
@@ -158,14 +153,6 @@ class ScholarshipMiniInProgramSerializer(serializers.ModelSerializer):
 
 
 class ProgramDetailSerializer(serializers.ModelSerializer):
-    """
-    Детальный сериализатор Program:
-    - hasScholarship: "Yes" или "No"
-    - days_left: "X days left"/"Deadline passed"/"Deadline: YYYY-MM-DD (est.)"
-    - exams: требования (IELTS, TOEFL, SAT, ACT, GPA, IB, Cambridge)
-    - official_link: URL
-    - scholarships: список связанных грантов (через ScholarshipMiniInProgramSerializer)
-    """
     university     = UniversityMiniInProgramSerializer(read_only=True)
     hasScholarship = serializers.SerializerMethodField()
     days_left      = serializers.SerializerMethodField()
@@ -252,7 +239,7 @@ class UniversityMiniInScholarshipSerializer(serializers.ModelSerializer):
 
 class ScholarshipDetailSerializer(serializers.ModelSerializer):
     universities = UniversityMiniSerializer(many=True)
-    programs = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
+    programs     = ProgramMiniInScholarshipSerializer(many=True, read_only=True)
 
     class Meta:
         model  = Scholarship
@@ -276,7 +263,7 @@ class ScholarshipDetailSerializer(serializers.ModelSerializer):
 
 
 # -----------------------------
-# Сериализаторы избранного
+# Сериализаторы избранного (Favorite)
 # -----------------------------
 
 class UniversityFavoriteSerializer(serializers.ModelSerializer):
@@ -286,10 +273,16 @@ class UniversityFavoriteSerializer(serializers.ModelSerializer):
         source="university",
         write_only=True
     )
+    order = serializers.IntegerField(required=False)
+    pinned = serializers.BooleanField(required=False)
+    status = serializers.ChoiceField(
+        choices=[("in_progress", "В процессе подготовки"), ("ready_to_apply", "Готов к подаче")],
+        required=False
+    )
 
     class Meta:
         model  = UniversityFavorite
-        fields = ["id", "university", "university_id", "created_at"]
+        fields = ["id", "university", "university_id", "created_at", "order", "pinned", "status"]
 
 
 class ProgramFavoriteSerializer(serializers.ModelSerializer):
@@ -299,10 +292,16 @@ class ProgramFavoriteSerializer(serializers.ModelSerializer):
         source="program",
         write_only=True
     )
+    order = serializers.IntegerField(required=False)
+    pinned = serializers.BooleanField(required=False)
+    status = serializers.ChoiceField(
+        choices=[("in_progress", "В процессе подготовки"), ("ready_to_apply", "Готов к подаче")],
+        required=False
+    )
 
     class Meta:
         model  = ProgramFavorite
-        fields = ["id", "program", "program_id", "created_at"]
+        fields = ["id", "program", "program_id", "created_at", "order", "pinned", "status"]
 
 
 class ScholarshipFavoriteSerializer(serializers.ModelSerializer):
@@ -312,7 +311,13 @@ class ScholarshipFavoriteSerializer(serializers.ModelSerializer):
         source="scholarship",
         write_only=True
     )
+    order = serializers.IntegerField(required=False)
+    pinned = serializers.BooleanField(required=False)
+    status = serializers.ChoiceField(
+        choices=[("in_progress", "В процессе подготовки"), ("ready_to_apply", "Готов к подаче")],
+        required=False
+    )
 
     class Meta:
         model  = ScholarshipFavorite
-        fields = ["id", "scholarship", "scholarship_id", "created_at"]
+        fields = ["id", "scholarship", "scholarship_id", "created_at", "order", "pinned", "status"]
