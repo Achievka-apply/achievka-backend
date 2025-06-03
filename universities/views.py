@@ -30,29 +30,28 @@ class IsOwner(permissions.BasePermission):
 # ============================
 #      UniversityViewSet
 # ============================
-
 class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    list:     GET /universities/             → возвращает список университетов,
-                                              с фильтрами, поиском, сортировкой
-    retrieve: GET /universities/{pk}/        → детальная информация об университете
+    list:     GET /universities/   → возвращает список университетов,
+                                   с фильтрами, поиском, сортировкой
+    retrieve: GET /universities/{pk}/ → детальная информация об университете
 
     autocomplete: GET /universities/autocomplete/?q=<префикс>
         → возвращает до 10 совпадений по name для автоподсказок
     """
     queryset = University.objects.annotate(
-        count_programs=Count("programs", distinct=True),
-        min_program_fee=Min("programs__tuition_fee")
+        count_programs  = Count("programs", distinct=True),
+        min_program_fee = Min("programs__tuition_fee"),
+        # НЕ аннотируем scholarshipCount, поскольку нам нужен только hasScholarship
     ).all()
 
-    # Возвращаем именно ваш FilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = UniversityFilter
     search_fields   = ["name", "city", "country"]
     ordering_fields = [
-        "name",             # алфавит (A-Z или Z-A)
-        "min_program_fee",  # «цена» — минимальная стоимость программы
-        "count_programs"    # количество программ
+        "name",            # алфавит (A-Z или Z-A)
+        "min_program_fee", # минимальная стоимость программы
+        "count_programs",  # количество программ
     ]
     ordering = ["name"]
 

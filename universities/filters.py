@@ -1,6 +1,10 @@
 from django.db.models import Count
 from django_filters import rest_framework as filters
 from .models import University, Program, Scholarship
+# universities/filters.py
+
+from django_filters import rest_framework as filters
+from .models import University
 
 class UniversityFilter(filters.FilterSet):
     """
@@ -18,16 +22,21 @@ class UniversityFilter(filters.FilterSet):
 
     def filter_has_scholarship(self, queryset, name, value):
         """
-        Если value=True, возвращаем университеты, у которых есть хотя бы одна программа с грантом.
-        Если value=False, — университеты, у которых ни одна программа не участвует ни в одном гранте.
+        Если value=True, вернуть университеты, у которых через связанные программы
+        есть хотя бы один Scholarship.
+        Если value=False, вернуть университеты, у которых ни одна программа
+        не связана ни с одним Scholarship.
         """
         if value:
-            # Любые университеты, у которых есть связанный Scholarship через programs__scholarships
-            return queryset.filter(programs__scholarships__isnull=False).distinct()
+            # Выбираем университеты, у которых есть программа с любым грантом
+            return queryset.filter(
+                programs__scholarships__isnull=False
+            ).distinct()
         else:
-            # Университеты, у которых нет ни одного Scholarship через программы:
-            # то есть исключаем те, кто имеет хотя бы один грант
-            return queryset.exclude(programs__scholarships__isnull=False)
+            # Возвращаем университеты, у которых ни одна программа не участвует ни в одном гранте
+            return queryset.exclude(
+                programs__scholarships__isnull=False
+            )
 
     class Meta:
         model  = University
@@ -38,6 +47,7 @@ class UniversityFilter(filters.FilterSet):
             "studyFormat",
             "hasScholarship",
         ]
+
 
 
 class ProgramFilter(filters.FilterSet):
