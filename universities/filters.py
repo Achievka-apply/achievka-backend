@@ -18,21 +18,16 @@ class UniversityFilter(filters.FilterSet):
 
     def filter_has_scholarship(self, queryset, name, value):
         """
-        Если value=True, возвращаем университеты, у которых есть хотя бы одна программа с любым грантом.
-        Если value=False, — все университеты, у которых нет ни одного связанного гранта (ни на одну программу).
+        Если value=True, возвращаем университеты, у которых есть хотя бы одна программа с грантом.
+        Если value=False, — университеты, у которых ни одна программа не участвует ни в одном гранте.
         """
-        # Достаём все университеты и аннотируем число связанных грантов через программы:
-        #   1. JOIN programs → scholarship (через related_name="scholarships")
-        #   2. Считаем COUNT("programs__scholarships")
-        qs = queryset.annotate(
-            num_total_scholarships=Count("programs__scholarships")
-        )
         if value:
-            # отбросим те, у кого нет ни одного связанного гранта
-            return qs.filter(num_total_scholarships__gt=0)
+            # Любые университеты, у которых есть связанный Scholarship через programs__scholarships
+            return queryset.filter(programs__scholarships__isnull=False).distinct()
         else:
-            # оставим только те, у кого ровно 0
-            return qs.filter(num_total_scholarships=0)
+            # Университеты, у которых нет ни одного Scholarship через программы:
+            # то есть исключаем те, кто имеет хотя бы один грант
+            return queryset.exclude(programs__scholarships__isnull=False)
 
     class Meta:
         model  = University
