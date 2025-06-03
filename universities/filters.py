@@ -13,6 +13,7 @@ class UniversityFilter(filters.FilterSet):
     3) Фильтр по списку городов  → ?cities=London,Astana,Paris
     4) Фильтр по формату (online/campus/hybrid) → ?studyFormat=online
     5) Фильтр «hasScholarship» → ?hasScholarship=True/False
+       (только прямая связь University.scholarships)
     """
     name           = filters.CharFilter(field_name="name", lookup_expr="icontains")
     countries      = filters.BaseInFilter(field_name="country", lookup_expr="in")
@@ -22,21 +23,15 @@ class UniversityFilter(filters.FilterSet):
 
     def filter_has_scholarship(self, queryset, name, value):
         """
-        Если value=True, вернуть университеты, у которых через связанные программы
-        есть хотя бы один Scholarship.
-        Если value=False, вернуть университеты, у которых ни одна программа
-        не связана ни с одним Scholarship.
+        Если value=True, возвращаем университеты, у которых есть хотя бы один
+        связанный Scholarship напрямую (через University.scholarships).
+        Если value=False, возвращаем университеты, у которых нет ни одного
+        прямого Scholarship.
         """
         if value:
-            # Выбираем университеты, у которых есть программа с любым грантом
-            return queryset.filter(
-                programs__scholarships__isnull=False
-            ).distinct()
+            return queryset.filter(scholarships__isnull=False).distinct()
         else:
-            # Возвращаем университеты, у которых ни одна программа не участвует ни в одном гранте
-            return queryset.exclude(
-                programs__scholarships__isnull=False
-            )
+            return queryset.filter(scholarships__isnull=True)
 
     class Meta:
         model  = University
