@@ -1,3 +1,5 @@
+# universities/views.py
+
 from django.db.models import Count, Min
 from rest_framework import viewsets, mixins, permissions, status
 from rest_framework.decorators import action
@@ -22,45 +24,36 @@ from .serializers import (
 )
 from .filters import UniversityFilter, ProgramFilter, ScholarshipFilter
 
-
-# Права доступа: только владелец может удалять свой favorite
 class IsOwner(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return obj.user == request.user
-
-
 # ============================
 #      UniversityViewSet
 # ============================
 
 class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    list:     GET /universities/             → возвращает список университетов, с фильтрами, поиском, сортировкой
+    list:     GET /universities/             → возвращает список университетов,
+                                              с фильтрами, поиском, сортировкой
     retrieve: GET /universities/{pk}/        → детальная информация об университете
 
-    Дополнительно:
     autocomplete: GET /universities/autocomplete/?q=<префикс>
         → возвращает до 10 совпадений по name для автоподсказок
     """
-    # 1) queryset здесь мы сразу аннотируем двумя дополнительными полями:
-    #    a) count_programs — число закреплённых программ у данного университета
-    #    b) min_program_fee — минимальная tuition_fee среди всех программ этого университета
     queryset = University.objects.annotate(
         count_programs=Count("programs", distinct=True),
         min_program_fee=Min("programs__tuition_fee")
     ).all()
 
-    # 2) Подключаем фильтры, поиск и сортировку
+    # Возвращаем именно ваш FilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = UniversityFilter
     search_fields   = ["name", "city", "country"]
-    # ordering_fields указываем, какие поля можно передавать в ?ordering=<поле>
     ordering_fields = [
         "name",             # алфавит (A-Z или Z-A)
         "min_program_fee",  # «цена» — минимальная стоимость программы
-        "count_programs"    # например, по количеству программ (если когда-то нужно)
+        "count_programs"    # количество программ
     ]
-    # По умолчанию, если не указан ordering, отдаём по имени в алфавитном порядке
     ordering = ["name"]
 
     def get_serializer_class(self):
@@ -70,20 +63,10 @@ class UniversityViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def autocomplete(self, request):
-        """
-        GET /universities/autocomplete/?q=<строка>
-        Возвращает до 10 университетов, у которых name начинается или содержит <строка> (regardless of case).
-        """
-
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response({"results": []})
-
-        # Ищем первые 10 совпадений по частичному понятию (icontains);
-        # можно заменить на startswith, если строго «начинается с».
         matches = University.objects.filter(name__icontains=q)[:10]
-        # Сериализуем только поле id и name (можно сделать отдельный мини-сериализатор,
-        # но для простоты вернём список dict)
         data = [{"id": uni.id, "name": uni.name} for uni in matches]
         return Response({"results": data}, status=status.HTTP_200_OK)
 
@@ -100,15 +83,12 @@ class ProgramViewSet(viewsets.ReadOnlyModelViewSet):
     autocomplete: GET /programs/autocomplete/?q=<строка>
     """
     queryset = Program.objects.select_related("university").all()
+
+    # Возвращаем ваш FilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProgramFilter
     search_fields   = ["name", "university__name", "city", "country"]
-    # Разрешаем сортировать по:
-    #   1) tuition_fee — «цена»
-    #   2) name        — «алфавит»
-    #   3) deadline    — «дедлайн»
     ordering_fields = ["tuition_fee", "name", "deadline"]
-    # По умолчанию сортируем по алфавиту
     ordering = ["name"]
 
     def get_serializer_class(self):
@@ -118,10 +98,6 @@ class ProgramViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def autocomplete(self, request):
-        """
-        GET /programs/autocomplete/?q=<строка>
-        Возвращает до 10 программ, у которых name содержит <строка>.
-        """
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response({"results": []})
@@ -145,15 +121,12 @@ class ScholarshipViewSet(viewsets.ReadOnlyModelViewSet):
     autocomplete: GET /scholarships/autocomplete/?q=<строка>
     """
     queryset = Scholarship.objects.all()
+
+    # Возвращаем ваш FilterSet
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ScholarshipFilter
     search_fields   = ["name", "country"]
-    # Сортировка по:
-    #   1) amount   — «цена»
-    #   2) name     — «алфавит»
-    #   3) deadline — «дедлайн»
     ordering_fields = ["amount", "name", "deadline"]
-    # По умолчанию сортируем по дедлайну (сначала самые близкие дедлайны)
     ordering = ["deadline"]
 
     def get_serializer_class(self):
@@ -163,10 +136,6 @@ class ScholarshipViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def autocomplete(self, request):
-        """
-        GET /scholarships/autocomplete/?q=<строка>
-        Возвращает до 10 грантов, у которых name содержит <строка>.
-        """
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response({"results": []})
@@ -179,49 +148,158 @@ class ScholarshipViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # ============================
-#  Favorite ViewSets (unchanged)
+#  UniversityFavoriteViewSet
 # ============================
 
 class UniversityFavoriteViewSet(
         mixins.ListModelMixin,
         mixins.CreateModelMixin,
+        mixins.RetrieveModelMixin,
+        mixins.UpdateModelMixin,
         mixins.DestroyModelMixin,
         viewsets.GenericViewSet):
     serializer_class   = UniversityFavoriteSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
 
+    filter_backends   = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields  = ["status", "pinned"]
+    ordering_fields   = [
+        "university__name",
+        "order",
+        "pinned",
+        "status",
+        "created_at",
+    ]
+    ordering = ["-pinned", "order"]
+
     def get_queryset(self):
         return UniversityFavorite.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        if "order" not in serializer.validated_data:
+            last = UniversityFavorite.objects.filter(user=self.request.user).order_by("-order").first()
+            serializer.save(user=self.request.user, order=(last.order + 1) if last else 0)
+        else:
+            serializer.save(user=self.request.user)
 
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        data = request.data
+        for item in data:
+            fav_id   = item.get("id")
+            new_order = item.get("order")
+            if fav_id is None or new_order is None:
+                continue
+            try:
+                fav = UniversityFavorite.objects.get(id=fav_id, user=request.user)
+                fav.order = new_order
+                fav.save(update_fields=["order"])
+            except UniversityFavorite.DoesNotExist:
+                continue
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ============================
+#  ProgramFavoriteViewSet
+# ============================
 
 class ProgramFavoriteViewSet(
         mixins.ListModelMixin,
         mixins.CreateModelMixin,
+        mixins.RetrieveModelMixin,
+        mixins.UpdateModelMixin,
         mixins.DestroyModelMixin,
         viewsets.GenericViewSet):
     serializer_class   = ProgramFavoriteSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
 
+    filter_backends   = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields  = ["status", "pinned"]
+    ordering_fields   = [
+        "program__name",
+        "program__deadline",
+        "order",
+        "pinned",
+        "status",
+        "created_at",
+    ]
+    ordering = ["-pinned", "order"]
+
     def get_queryset(self):
         return ProgramFavorite.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        if "order" not in serializer.validated_data:
+            last = ProgramFavorite.objects.filter(user=self.request.user).order_by("-order").first()
+            serializer.save(user=self.request.user, order=(last.order + 1) if last else 0)
+        else:
+            serializer.save(user=self.request.user)
 
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        data = request.data
+        for item in data:
+            fav_id   = item.get("id")
+            new_order = item.get("order")
+            if fav_id is None or new_order is None:
+                continue
+            try:
+                fav = ProgramFavorite.objects.get(id=fav_id, user=request.user)
+                fav.order = new_order
+                fav.save(update_fields=["order"])
+            except ProgramFavorite.DoesNotExist:
+                continue
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ============================
+#  ScholarshipFavoriteViewSet
+# ============================
 
 class ScholarshipFavoriteViewSet(
         mixins.ListModelMixin,
         mixins.CreateModelMixin,
+        mixins.RetrieveModelMixin,
+        mixins.UpdateModelMixin,
         mixins.DestroyModelMixin,
         viewsets.GenericViewSet):
     serializer_class   = ScholarshipFavoriteSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
 
+    filter_backends   = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields  = ["status", "pinned"]
+    ordering_fields   = [
+        "scholarship__name",
+        "scholarship__deadline",
+        "order",
+        "pinned",
+        "status",
+        "created_at",
+    ]
+    ordering = ["-pinned", "order"]
+
     def get_queryset(self):
         return ScholarshipFavorite.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        if "order" not in serializer.validated_data:
+            last = ScholarshipFavorite.objects.filter(user=self.request.user).order_by("-order").first()
+            serializer.save(user=self.request.user, order=(last.order + 1) if last else 0)
+        else:
+            serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=["post"], url_path="reorder")
+    def reorder(self, request):
+        data = request.data
+        for item in data:
+            fav_id   = item.get("id")
+            new_order = item.get("order")
+            if fav_id is None or new_order is None:
+                continue
+            try:
+                fav = ScholarshipFavorite.objects.get(id=fav_id, user=request.user)
+                fav.order = new_order
+                fav.save(update_fields=["order"])
+            except ScholarshipFavorite.DoesNotExist:
+                continue
+        return Response(status=status.HTTP_204_NO_CONTENT)

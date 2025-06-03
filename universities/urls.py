@@ -89,7 +89,7 @@ urlpatterns = [
     #  Favorites: Universities
     # ======================
 
-    # Получить список избранных университетов / добавить новый favorite
+    # Список избранных университетов / добавить новый favorite
     path(
         'favorites/universities/',
         UniversityFavoriteViewSet.as_view({
@@ -98,11 +98,21 @@ urlpatterns = [
         }),
         name='fav-university-list'
     ),
-    # Удалить университет из избранного по его pk
+    # Детальная работа с favorite: retrieve, partial_update (PATCH), delete
     path(
         'favorites/universities/<int:pk>/',
-        UniversityFavoriteViewSet.as_view({'delete': 'destroy'}),
+        UniversityFavoriteViewSet.as_view({
+            'get': 'retrieve',
+            'patch': 'partial_update',
+            'delete': 'destroy'
+        }),
         name='fav-university-detail'
+    ),
+    # Переупорядочивание всех университетов в избранном
+    path(
+        'favorites/universities/reorder/',
+        UniversityFavoriteViewSet.as_view({'post': 'reorder'}),
+        name='fav-university-reorder'
     ),
 
 
@@ -119,11 +129,21 @@ urlpatterns = [
         }),
         name='fav-program-list'
     ),
-    # Удалить программу из избранного по её pk
+    # Детальная работа с favorite: retrieve, partial_update (PATCH), delete
     path(
         'favorites/programs/<int:pk>/',
-        ProgramFavoriteViewSet.as_view({'delete': 'destroy'}),
+        ProgramFavoriteViewSet.as_view({
+            'get': 'retrieve',
+            'patch': 'partial_update',
+            'delete': 'destroy'
+        }),
         name='fav-program-detail'
+    ),
+    # Переупорядочивание всех программ в избранном
+    path(
+        'favorites/programs/reorder/',
+        ProgramFavoriteViewSet.as_view({'post': 'reorder'}),
+        name='fav-program-reorder'
     ),
 
 
@@ -140,10 +160,20 @@ urlpatterns = [
         }),
         name='fav-scholarship-list'
     ),
-    # Удалить грант из избранного по его pk
+    # Детальная работа с favorite: retrieve, partial_update (PATCH), delete
     path(
         'favorites/scholarships/<int:pk>/',
-        ScholarshipFavoriteViewSet.as_view({'delete': 'destroy'}),
+        ScholarshipFavoriteViewSet.as_view({
+            'get': 'retrieve',
+            'patch': 'partial_update',
+            'delete': 'destroy'
+        }),
         name='fav-scholarship-detail'
+    ),
+    # Переупорядочивание всех грантов в избранном
+    path(
+        'favorites/scholarships/reorder/',
+        ScholarshipFavoriteViewSet.as_view({'post': 'reorder'}),
+        name='fav-scholarship-reorder'
     ),
 ]
