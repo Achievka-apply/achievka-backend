@@ -69,14 +69,21 @@ class ProgramFilter(filters.FilterSet):
     deadlineFrom   = filters.DateFilter(field_name="deadline", lookup_expr="gte")
     deadlineTo     = filters.DateFilter(field_name="deadline", lookup_expr="lte")
     hasScholarship = filters.BooleanFilter(method="filter_has_scholarship")
-    minIELTS   = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
-    minTOEFL   = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
-    minSAT     = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
-    minACT     = filters.CharFilter(field_name="min_act", lookup_expr="lte")
+    minIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
+    maxIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
+    # Для TOEFL
+    minTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
+    maxTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
+    # Для SAT
+    minSAT = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
+    maxSAT = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
+    # Для ACT
+    minACT = filters.CharFilter(field_name="min_act", lookup_expr="gte")
+    maxACT = filters.CharFilter(field_name="min_act", lookup_expr="lte")
 
     def filter_has_scholarship(self, queryset, name, value):
         """
-        Если value=True, оставляем только программы, у которых есть хотя бы один связанный Scholarship.
+        Если value=True, оставляем только программы, у которых есть хотя бы один связанный Schol`arship.
         Если False, — только те, у которых нет ни одного гранта.
         """
         if value:
@@ -99,9 +106,13 @@ class ProgramFilter(filters.FilterSet):
             "deadlineTo",
             "hasScholarship",
             "minIELTS",
+            "maxIELTS"
             "minTOEFL",
+            "maxTOEFL",
             "minSAT",
+            "maxSAT",
             "minACT",
+            "maxACT",
         ]
 
 
@@ -123,10 +134,17 @@ class ScholarshipFilter(filters.FilterSet):
     hasResultDate          = filters.BooleanFilter(
         field_name="result_date", lookup_expr="isnull", exclude=True
     )
-    minIELTS               = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
-    minTOEFL               = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
-    minSAT                 = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
-    minACT                 = filters.CharFilter(field_name="min_act", lookup_expr="lte")
+    minIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
+    maxIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
+    # Для TOEFL
+    minTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
+    maxTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
+    # Для SAT
+    minSAT   = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
+    maxSAT   = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
+    # Для ACT
+    minACT   = filters.CharFilter(field_name="min_act", lookup_expr="gte")
+    maxACT   = filters.CharFilter(field_name="min_act", lookup_expr="lte")
 
     class Meta:
         model  = Scholarship
@@ -137,7 +155,11 @@ class ScholarshipFilter(filters.FilterSet):
             "submissionDeadlineTo",
             "hasResultDate",
             "minIELTS",
+            "maxIELTS"
             "minTOEFL",
+            "maxTOEFL",
             "minSAT",
+            "maxSAT",
             "minACT",
+            "maxACT",
         ]
