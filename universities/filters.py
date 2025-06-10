@@ -106,7 +106,7 @@ class ProgramFilter(filters.FilterSet):
             "deadlineTo",
             "hasScholarship",
             "minIELTS",
-            "maxIELTS"
+            "maxIELTS",
             "minTOEFL",
             "maxTOEFL",
             "minSAT",
@@ -155,7 +155,7 @@ class ScholarshipFilter(filters.FilterSet):
             "submissionDeadlineTo",
             "hasResultDate",
             "minIELTS",
-            "maxIELTS"
+            "maxIELTS",
             "minTOEFL",
             "maxTOEFL",
             "minSAT",
