@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
-    'allauth.socialaccount.providers.microsoft',
 
     'dj_rest_auth',
     'dj_rest_auth.registration',
