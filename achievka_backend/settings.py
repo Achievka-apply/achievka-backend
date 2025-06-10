@@ -101,7 +101,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {'access_type': 'offline'},
     },
     "microsoft": {
-        "APPS": [
+        "APP": [
             {
                 "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e034",
                 "secret":    "f84eb9d6-9345-4a37-a15f-62022002f04d",
