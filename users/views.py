@@ -18,7 +18,7 @@ from drf_yasg.utils import swagger_auto_schema
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.facebook.views import FacebookOAuth2Adapter
-#from allauth.socialaccount.providers.microsoft.views import MicrosoftOAuth2Adapter
+from allauth.socialaccount.providers.microsoft.views import MicrosoftGraphOAuth2Adapter
 from allauth.socialaccount.providers.apple.views import AppleOAuth2Adapter
 from rest_framework_simplejwt.views import TokenRefreshView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
@@ -265,10 +265,11 @@ class FacebookLogin(SocialLoginView):
     adapter_class = FacebookOAuth2Adapter
 
 # Microsoft
-'''
 class MicrosoftLogin(SocialLoginView):
-    adapter_class = MicrosoftOAuth2Adapter
-'''
+    adapter_class = MicrosoftGraphOAuth2Adapter
+    client_class  = OAuth2Client
+    callback_url   = "https://dev.achievka.com/app"
+
 # Apple
 class AppleLogin(SocialLoginView):
     adapter_class = AppleOAuth2Adapter

@@ -11,7 +11,8 @@ from .views import (
     FacebookLogin,
     AppleLogin,
     CookieTokenRefreshView,
-    OnboardingResponseCreateView
+    OnboardingResponseCreateView,
+    MicrosoftLogin
 )
 
 app_name = 'users'
@@ -25,7 +26,7 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('google/',    GoogleLogin.as_view(),    name='google_login'),
     path('facebook/',  FacebookLogin.as_view(),  name='facebook_login'),
-   # path('microsoft/', MicrosoftLogin.as_view(), name='microsoft_login'),
+    path('microsoft/', MicrosoftLogin.as_view(), name='microsoft_login'),
     path('apple/',     AppleLogin.as_view(),     name='apple_login'),
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
     path('responses/', OnboardingResponseCreateView.as_view(), name='responses'),
