@@ -79,6 +79,13 @@ class ProgramFilter(filters.FilterSet):
     minACT    = filters.NumberFilter(method="filter_act_range")
     maxACT    = filters.NumberFilter(method="filter_act_range")
 
+
+    def filter_sat_range(self, qs, name, value):
+        qs = qs.exclude(min_sat__exact="") \
+               .annotate(sat_val=Cast("min_sat", IntegerField()))
+        return qs.filter(sat_val__gte=value) if name == "minSAT" \
+               else qs.filter(sat_val__lte=value)
+
     def filter_ielts_range(self, qs, name, value):
         qs = qs.exclude(min_ielts__exact="")
         qs = qs.annotate(ielts_val=Cast("min_ielts", IntegerField()))
@@ -156,6 +163,13 @@ class ScholarshipFilter(filters.FilterSet):
     maxSAT    = filters.NumberFilter(method="filter_sat_range")
     minACT    = filters.NumberFilter(method="filter_act_range")
     maxACT    = filters.NumberFilter(method="filter_act_range")
+
+
+    def filter_sat_range(self, qs, name, value):
+        qs = qs.exclude(min_sat__exact="") \
+               .annotate(sat_val=Cast("min_sat", IntegerField()))
+        return qs.filter(sat_val__gte=value) if name == "minSAT" \
+               else qs.filter(sat_val__lte=value)
 
     def filter_ielts_range(self, qs, name, value):
         qs = qs.exclude(min_ielts__exact="")
