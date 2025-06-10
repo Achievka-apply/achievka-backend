@@ -69,6 +69,10 @@ class ProgramFilter(filters.FilterSet):
     deadlineFrom   = filters.DateFilter(field_name="deadline", lookup_expr="gte")
     deadlineTo     = filters.DateFilter(field_name="deadline", lookup_expr="lte")
     hasScholarship = filters.BooleanFilter(method="filter_has_scholarship")
+    minIELTS   = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
+    minTOEFL   = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
+    minSAT     = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
+    minACT     = filters.CharFilter(field_name="min_act", lookup_expr="lte")
 
     def filter_has_scholarship(self, queryset, name, value):
         """
@@ -94,6 +98,10 @@ class ProgramFilter(filters.FilterSet):
             "deadlineFrom",
             "deadlineTo",
             "hasScholarship",
+            "minIELTS",
+            "minTOEFL",
+            "minSAT",
+            "minACT",
         ]
 
 
