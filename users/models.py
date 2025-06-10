@@ -73,3 +73,12 @@ class OnboardingResponse(models.Model):
 
     def __str__(self):
         return f"User {self.user_id} → Q{self.question_index}"
+
+class Newsletter(models.Model):
+    subject = models.CharField('Тема', max_length=200)
+    body    = models.TextField('Текст письма')
+    created = models.DateTimeField(auto_now_add=True)
+    sent    = models.BooleanField('Отправлено', default=False)
+
+    def __str__(self):
+        return f'{self.subject} — {"✓" if self.sent else "…"}'
