@@ -40,12 +40,12 @@ jobs:
             cd ${{ secrets.PROJECT_PATH }}
 
             # Тянем свежий образ
-            docker-compose pull web
+            docker-compose pull backend
 
             # Останавливаем и удаляем старый контейнер web
-            docker-compose stop web     || true
-            docker-compose rm -f web     || true
+            docker-compose stop backend     || true
+            docker-compose rm -f backend     || true
 
             # Запускаем новый контейнер web
-            docker-compose up -d web
+            docker-compose up -d backend
           EOF
