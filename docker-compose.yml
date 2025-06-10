@@ -1,7 +1,9 @@
+version: "3.8"
 
 services:
   backend:
-    image: yessirkegen/achievka_backend:latest
+    build:
+      dockerfile: Dockerfile         # если имя отличается, укажите его
     container_name: achievka_backend
     restart: unless-stopped
     ports:
@@ -10,11 +12,12 @@ services:
       - .env
 
   frontend:
-    image: yessirkegen/achievka_frontend:latest
+    build:
+      dockerfile: Dockerfile
     container_name: achievka_frontend
     restart: unless-stopped
     ports:
-      - "80:3000"
+      - "3000:3000"                  # проброс порта 3000 на 3000
     env_file:
       - .env
 

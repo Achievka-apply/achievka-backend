@@ -115,10 +115,10 @@ class ScholarshipFilter(filters.FilterSet):
     hasResultDate          = filters.BooleanFilter(
         field_name="result_date", lookup_expr="isnull", exclude=True
     )
-    minIELTS               = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
-    minTOEFL               = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
-    minSAT                 = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
-    minACT                 = filters.CharFilter(field_name="min_act", lookup_expr="gte")
+    minIELTS               = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
+    minTOEFL               = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
+    minSAT                 = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
+    minACT                 = filters.CharFilter(field_name="min_act", lookup_expr="lte")
 
     class Meta:
         model  = Scholarship

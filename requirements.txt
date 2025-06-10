@@ -35,4 +35,5 @@ urllib3==2.4.0
 whitenoise==6.9.0
 python-dotenv
 django-allauth==0.61.1
+django-filter>=23.0
 

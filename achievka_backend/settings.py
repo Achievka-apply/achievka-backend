@@ -144,6 +144,8 @@ ACCOUNT_SIGNUP_FIELDS    = ['email*', 'password1*', 'password2*']
 REST_USE_JWT = True
 JWT_AUTH_COOKIE = 'access_token_cookie'
 JWT_AUTH_REFRESH_COOKIE = 'refresh_token_cookie'
+TOKEN_MODEL = None
+REST_AUTH_TOKEN_MODEL = None
 
 AUTH_USER_MODEL = 'users.User'
 
