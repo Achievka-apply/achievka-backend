@@ -2,7 +2,8 @@ from django.db.models import Count
 from django_filters import rest_framework as filters
 from .models import University, Program, Scholarship
 # universities/filters.py
-
+from django.db.models.functions import Cast
+from django.db.models import IntegerField
 from django_filters import rest_framework as filters
 from .models import University
 
@@ -69,17 +70,30 @@ class ProgramFilter(filters.FilterSet):
     deadlineFrom   = filters.DateFilter(field_name="deadline", lookup_expr="gte")
     deadlineTo     = filters.DateFilter(field_name="deadline", lookup_expr="lte")
     hasScholarship = filters.BooleanFilter(method="filter_has_scholarship")
-    minIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
-    maxIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
-    # Для TOEFL
-    minTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
-    maxTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
-    # Для SAT
-    minSAT = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
-    maxSAT = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
-    # Для ACT
-    minACT = filters.CharFilter(field_name="min_act", lookup_expr="gte")
-    maxACT = filters.CharFilter(field_name="min_act", lookup_expr="lte")
+    minIELTS  = filters.NumberFilter(method="filter_ielts_range")
+    maxIELTS  = filters.NumberFilter(method="filter_ielts_range")
+    minTOEFL  = filters.NumberFilter(method="filter_toefl_range")
+    maxTOEFL  = filters.NumberFilter(method="filter_toefl_range")
+    minSAT    = filters.NumberFilter(method="filter_sat_range")
+    maxSAT    = filters.NumberFilter(method="filter_sat_range")
+    minACT    = filters.NumberFilter(method="filter_act_range")
+    maxACT    = filters.NumberFilter(method="filter_act_range")
+
+    def filter_ielts_range(self, qs, name, value):
+        qs = qs.exclude(min_ielts__exact="")
+        qs = qs.annotate(ielts_val=Cast("min_ielts", IntegerField()))
+        return qs.filter(**{"ielts_val__gte" if name=="minIELTS" else "ielts_val__lte": value})
+
+    def filter_toefl_range(self, qs, name, value):
+        qs = qs.exclude(min_toefl__exact="")
+        qs = qs.annotate(toefl_val=Cast("min_toefl", IntegerField()))
+        return qs.filter(**{"toefl_val__gte" if name=="minTOEFL" else "toefl_val__lte": value})
+
+    def filter_act_range(self, qs, name, value):
+        qs = qs.exclude(min_act__exact="")
+        qs = qs.annotate(act_val=Cast("min_act", IntegerField()))
+        return qs.filter(**{"act_val__gte" if name=="minACT" else "act_val__lte": value})
+
 
     def filter_has_scholarship(self, queryset, name, value):
         """
@@ -134,17 +148,30 @@ class ScholarshipFilter(filters.FilterSet):
     hasResultDate          = filters.BooleanFilter(
         field_name="result_date", lookup_expr="isnull", exclude=True
     )
-    minIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="gte")
-    maxIELTS = filters.CharFilter(field_name="min_ielts", lookup_expr="lte")
-    # Для TOEFL
-    minTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="gte")
-    maxTOEFL = filters.CharFilter(field_name="min_toefl", lookup_expr="lte")
-    # Для SAT
-    minSAT   = filters.CharFilter(field_name="min_sat", lookup_expr="gte")
-    maxSAT   = filters.CharFilter(field_name="min_sat", lookup_expr="lte")
-    # Для ACT
-    minACT   = filters.CharFilter(field_name="min_act", lookup_expr="gte")
-    maxACT   = filters.CharFilter(field_name="min_act", lookup_expr="lte")
+    minIELTS  = filters.NumberFilter(method="filter_ielts_range")
+    maxIELTS  = filters.NumberFilter(method="filter_ielts_range")
+    minTOEFL  = filters.NumberFilter(method="filter_toefl_range")
+    maxTOEFL  = filters.NumberFilter(method="filter_toefl_range")
+    minSAT    = filters.NumberFilter(method="filter_sat_range")
+    maxSAT    = filters.NumberFilter(method="filter_sat_range")
+    minACT    = filters.NumberFilter(method="filter_act_range")
+    maxACT    = filters.NumberFilter(method="filter_act_range")
+
+    def filter_ielts_range(self, qs, name, value):
+        qs = qs.exclude(min_ielts__exact="")
+        qs = qs.annotate(ielts_val=Cast("min_ielts", IntegerField()))
+        return qs.filter(**{"ielts_val__gte" if name=="minIELTS" else "ielts_val__lte": value})
+
+    def filter_toefl_range(self, qs, name, value):
+        qs = qs.exclude(min_toefl__exact="")
+        qs = qs.annotate(toefl_val=Cast("min_toefl", IntegerField()))
+        return qs.filter(**{"toefl_val__gte" if name=="minTOEFL" else "toefl_val__lte": value})
+
+    def filter_act_range(self, qs, name, value):
+        qs = qs.exclude(min_act__exact="")
+        qs = qs.annotate(act_val=Cast("min_act", IntegerField()))
+        return qs.filter(**{"act_val__gte" if name=="minACT" else "act_val__lte": value})
+
 
     class Meta:
         model  = Scholarship
