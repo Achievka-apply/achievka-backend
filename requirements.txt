@@ -35,6 +35,5 @@ uritemplate==4.1.1
 urllib3==2.4.0
 whitenoise==6.9.0
 python-dotenv
-
 django-filter>=23.0
 
