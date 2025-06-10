@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
+    'allauth.socialaccount.providers.microsoft',
+
     'dj_rest_auth',
     'dj_rest_auth.registration',
     'rest_framework_simplejwt.token_blacklist',
@@ -97,6 +99,19 @@ SOCIALACCOUNT_PROVIDERS = {
         },
         'SCOPE': ['openid', 'email', 'profile'],
         'AUTH_PARAMS': {'access_type': 'offline'},
+    },
+    "microsoft": {
+        "APPS": [
+            {
+                "client_id": "<ваш-client-id>",
+                "secret":    "<ваш-client-secret>",
+                "settings": {
+                    "tenant":    "organizations",  # или конкретный tenant-id
+                    "login_url": "https://login.microsoftonline.com",
+                    "graph_url": "https://graph.microsoft.com",
+                }
+            }
+        ]
     }
 }
 
