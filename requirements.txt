@@ -4,8 +4,9 @@ cffi==1.17.1
 charset-normalizer==3.4.2
 cryptography==44.0.3
 defusedxml==0.7.1
-dj-rest-auth==7.0.1
+dj-rest-auth==7.0.0
 Django==5.2.1
+django-allauth==0.61.1
 django-cors-headers==4.7.0
 django-environ==0.12.0
 djangorestframework==3.16.0
@@ -34,6 +35,5 @@ uritemplate==4.1.1
 urllib3==2.4.0
 whitenoise==6.9.0
 python-dotenv
-django-allauth==0.61.1
 django-filter>=23.0
 

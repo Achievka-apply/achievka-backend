@@ -81,7 +81,7 @@ class CustomLoginView(APIView):
             httponly = True,
             secure   = not settings.DEBUG,  # True на проде
             samesite = 'Strict',
-            path     = '/api/auth/token/refresh/'  # доступно только этому пути
+           # path     = '/api/auth/token/refresh/'  # доступно только этому пути
         )
         return response
 
@@ -176,7 +176,7 @@ class CustomPasswordResetView(APIView):
 
         # 2) собираем ссылку на фронт
         reset_link = (
-            f"{settings.FRONTEND_URL}/reset-password"
+            "https://achievka.com/reset-password"
             f"?uid={uid}&token={token}"
         )
 
@@ -258,7 +258,11 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class GoogleLogin(SocialLoginView):
     adapter_class  = GoogleOAuth2Adapter
     client_class   = OAuth2Client
-    callback_url   = "https://achievka.com/app"  # тот же, что в Google Cloud Console
+    callback_url   = "postmessage"  # тот же, что в Google Cloud Console
+# если хочешь увидеть, что к тебе реально приходит:
+    def post(self, request, *args, **kwargs):
+        print(">>> GoogleLogin got payload:", request.data)
+        return super().post(request, *args, **kwargs)
 
 
 # Facebook
