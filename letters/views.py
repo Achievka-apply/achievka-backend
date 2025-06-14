@@ -18,17 +18,18 @@ openai.api_key = settings.OPENAI_API_KEY
 
 class LetterViewSet(viewsets.ModelViewSet):
     """
-    CRUD-эндпоинты для писем + версии + analyse_stream с памятью и динамическим выбором ассистента.
+    CRUD-эндпоинты для писем + версии + analyse_stream с памятью и гейтингом по подписке.
     """
     queryset = Letter.objects.all()
     serializer_class = LetterSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Только свои письма
+        # Возвращаем только письма текущего пользователя
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        # При создании письма фиксируем владельца
         serializer.save(user=self.request.user)
 
     @action(detail=True, methods=['get', 'post'], url_path='versions')
@@ -44,77 +45,92 @@ class LetterViewSet(viewsets.ModelViewSet):
             serializer = LetterVersionSerializer(qs, many=True)
             return Response(serializer.data)
 
-        # POST → create new version
+        # POST → создать новую версию
         text     = request.data.get('text', '')
         autosave = request.data.get('autosave', True)
 
-        # следующий version_num
+        # определяем следующий номер версии
         last = letter.versions.order_by('-version_num').first()
-        next_num = last.version_num + 1 if last else 1
+        next_num = (last.version_num + 1) if last else 1
 
-        # сохранить в S3
+        # сохраняем текст в S3
         s3_key = upload_letter_text(
             user_id=str(request.user.id),
             letter_id=str(letter.id),
             version_num=next_num,
             text=text
         )
+
+        # создаём запись в БД
         version = LetterVersion.objects.create(
             letter=letter,
             version_num=next_num,
             s3_key=s3_key
         )
 
-        data = LetterVersionSerializer(version).data
-        return Response(data, status=status.HTTP_201_CREATED)
+        serializer = LetterVersionSerializer(version)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='analyse_stream')
     def analyse_stream(self, request, pk=None):
         """
         POST /api/letters/{id}/analyse_stream/
-        Запускает стриминг анализа письма, при этом модель «помнит» всю историю.
+        Запускает стриминг анализа письма, при этом модель «помнит» всю историю
+        и применяет гейтинг по подписке.
         Ожидает в теле: { "version_num": <номер версии> }
         """
         letter = self.get_object()
+
+        # ─── Гейтинг по подписке ───
+        profile = getattr(request.user, 'profile', None)
+        if not profile or not profile.has_subscription:
+            # Если нет подписки, возвращаем locked
+            return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
+        # ────────────────────────────
+
         version_num = request.data.get('version_num')
         if not version_num:
-            return Response({"detail": "version_num is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "version_num is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Найти нужную версию
+        # Получаем нужную версию
         try:
             version = letter.versions.get(version_num=version_num)
         except LetterVersion.DoesNotExist:
-            return Response({"detail": "Version not found"},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Version not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        # Загрузить текст письма из S3
+        # Загружаем текст письма из S3
         s3 = boto3.client('s3', region_name=settings.AWS_REGION)
         obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
         letter_text = obj['Body'].read().decode('utf-8')
 
-        # Собрать всю историю сообщений (system/user/assistant) из прошлых запусков
+        # Собираем всю историю сообщений (system/user/assistant) для этой версии
         history = []
-        for msg in version.messages.all():  # VersionMessage instances
+        for msg in version.messages.all():
             history.append({"role": msg.role, "content": msg.content})
 
-        # Системное сообщение (инструкции) и пользовательское сообщение (текст письма)
+        # Системное сообщение с инструкциями
         system_msg = {
             "role": "system",
             "content": (
-                "ROLE\n"
                 "You are a university admissions officer and academic program director. "
                 "Critically evaluate the following motivation letter using international admissions standards "
                 "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
                 "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities and Compliance."
             )
         }
+        # Пользовательское сообщение с текстом письма
         user_msg = {"role": "user", "content": letter_text}
 
-        # Добавляем их в историю
+        # Добавляем system и user в историю
         history.extend([system_msg, user_msg])
 
-        # Сохраняем новые system + user
+        # Сохраняем их в БД
         VersionMessage.objects.bulk_create([
             VersionMessage(version=version, role=m["role"], content=m["content"])
             for m in (system_msg, user_msg)
@@ -128,10 +144,12 @@ class LetterViewSet(viewsets.ModelViewSet):
         }
         assistant_id = assistant_map.get(letter.type)
         if not assistant_id:
-            return Response({"detail": "Unknown letter type"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Unknown letter type"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Стримим ответ от OpenAI через SSE
+        # Функция-генератор для стриминга SSE
         def event_stream():
             full_reply = ""
             response = openai.ChatCompletion.create(
@@ -152,4 +170,8 @@ class LetterViewSet(viewsets.ModelViewSet):
             )
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+        # Возвращаем StreamingHttpResponse с SSE-форматом
+        return StreamingHttpResponse(
+            event_stream(),
+            content_type="text/event-stream"
+        )
