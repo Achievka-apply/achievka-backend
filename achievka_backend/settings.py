@@ -193,9 +193,12 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 # AWS S3
 AWS_ACCESS_KEY_ID     = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+ASSISTANT_COMMON_APP_ID = "asst_Leny043v8KKuVaRGUmJj0Q0z"
+ASSISTANT_UCAS_ID       = "asst_gkyVDyNrJPsiEHrzlbTWBkWs"
+ASSISTANT_MOTIVATION_ID = "asst_ai22qf4n0MTRAzWkhgPnGL7t"
 AWS_S3_BUCKET         = os.getenv("AWS_S3_BUCKET")
 AWS_REGION            = os.getenv("AWS_REGION")
-
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ROOT_URLCONF = 'achievka_backend.urls'
 TEMPLATES = [
     {
