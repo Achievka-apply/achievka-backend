@@ -38,3 +38,17 @@ class LetterVersion(models.Model):
 
     def __str__(self):
         return f"{self.letter.name} – v{self.version_num}"
+
+class VersionMessage(models.Model):
+    """
+    Хранит последовательность сообщений (system/user/assistant)
+    для каждой версии письма.
+    """
+    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    version      = models.ForeignKey(LetterVersion, on_delete=models.CASCADE, related_name='messages')
+    role         = models.CharField(max_length=20, choices=[('system','system'),('user','user'),('assistant','assistant')])
+    content      = models.TextField()
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']

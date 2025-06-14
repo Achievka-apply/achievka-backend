@@ -36,4 +36,7 @@ whitenoise==6.9.0
 python-dotenv
 django-allauth==0.61.1
 django-filter>=23.0
-
+boto3
+openai
+numpy
+faiss-cpu
