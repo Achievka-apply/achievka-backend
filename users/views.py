@@ -259,7 +259,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = PatchedOAuth2Client
-    callback_url = "https://dev.achievka.com/app"
+    callback_url = "https://dev.achievka.com/google/callback/"
 
 
 # Facebook
