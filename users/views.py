@@ -22,6 +22,7 @@ from allauth.socialaccount.providers.microsoft.views import MicrosoftGraphOAuth2
 from allauth.socialaccount.providers.apple.views import AppleOAuth2Adapter
 from rest_framework_simplejwt.views import TokenRefreshView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from users.oauth_clients import PatchedOAuth2Client
 
 from .serializers import (
     RegisterSerializer,
@@ -256,10 +257,9 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 
 class GoogleLogin(SocialLoginView):
-    adapter_class  = GoogleOAuth2Adapter
-    #client_class   = OAuth2Client
-    callback_url   = "https://dev.achievka.com/app"  # тот же, что в Google Cloud Console
-
+    adapter_class = GoogleOAuth2Adapter
+    client_class = PatchedOAuth2Client
+    callback_url = "https://dev.achievka.com/app"
 
 # Facebook
 class FacebookLogin(SocialLoginView):
