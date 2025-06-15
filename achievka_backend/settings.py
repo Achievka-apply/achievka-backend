@@ -160,7 +160,7 @@ REST_AUTH = {
     'USE_JWT': True,                             # ← must be here, not REST_USE_JWT
     # cookie names
     'JWT_AUTH_COOKIE': 'access_token_cookie',
-    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token_cookie',
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token',
     # disable the DRF Token model
     'TOKEN_MODEL': None,
     # if you’d ever overridden REST_AUTH_TOKEN_CREATOR you could set it here
