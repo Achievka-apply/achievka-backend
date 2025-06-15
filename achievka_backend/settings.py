@@ -116,7 +116,15 @@ SOCIALACCOUNT_PROVIDERS = {
         # обязательно указать scope и response_type
         "SCOPE": ["openid", "email", "profile", "offline_access", "User.Read"],
         "AUTH_PARAMS": {"response_type": "code"},
-    }
+    },
+    'facebook': {
+        'APP': {
+            'client_id': '10081722528562211',
+            'secret': '9db3a9a80115d7b64a2f59f560abc83c',
+        },
+        'SCOPE': ['email', 'public_profile'],
+        'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
+    },
 }
 
 REST_FRAMEWORK = {
