@@ -257,7 +257,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 class GoogleLogin(SocialLoginView):
     adapter_class  = GoogleOAuth2Adapter
-    client_class   = OAuth2Client
+    #client_class   = OAuth2Client
     callback_url   = "https://dev.achievka.com/app"  # тот же, что в Google Cloud Console
 
 
