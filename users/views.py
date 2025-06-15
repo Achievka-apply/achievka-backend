@@ -258,8 +258,11 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    client_class = PatchedOAuth2Client
-    callback_url = "https://dev.achievka.com/google/callback/"
+    client_class  = PatchedOAuth2Client
+
+    def get_callback_url(self, request):
+        # смотрим, что прислал фронтенд
+        return request.data.get('redirect_uri')
 
 # Facebook
 class FacebookLogin(SocialLoginView):
