@@ -112,22 +112,17 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {'access_type': 'offline'},
     },
     # … другие провайдеры …
-    "microsoft": {
-        "APP": [
-            {
-                "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e0341",
-                "secret": "f84eb9d6-9345-4a37-a15f-62022002f04d",
-                "settings": {
-                    "tenant": "organizations",  # multi-tenant
-                    "login_url": "https://login.microsoftonline.com",
-                    "graph_url": "https://graph.microsoft.com",
-                }
-            }
-        ],
-        # обязательно указать scope и response_type
-        "SCOPE": ["openid", "email", "profile", "offline_access", "User.Read"],
-        "AUTH_PARAMS": {"response_type": "code"},
-    },
+   "microsoft": {
+       "APP": {
+           "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e0341",  # ✅ полный ID из Azure
+           "secret":    "f84eb9d6-9345-4a37-a15f-62022002f04d",
+           "key":       ""
+       },
+       "SCOPE": ["openid", "email", "profile", "offline_access", "User.Read"],
+       "AUTH_PARAMS": {"response_type": "code"},
+   },
+
+    
     'facebook': {
         'APP': {
             'client_id': '10081722528562211',
