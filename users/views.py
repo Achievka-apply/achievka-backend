@@ -256,13 +256,18 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
 
 
+
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class  = PatchedOAuth2Client
 
+    # ← этот атрибут нужен обязательно, чтобы не было ошибки "Define callback_url in view"
+    callback_url = "https://dev.achievka.com/google/callback/"
+
     def get_callback_url(self, request):
-        # смотрим, что прислал фронтенд
-        return request.data.get('redirect_uri')
+        # если фронтенд прислал в POST поле redirect_uri — используем его,
+        # иначе упадём на статический атрибут выше
+        return request.data.get('redirect_uri') or self.callback_url
 
 # Facebook
 class FacebookLogin(SocialLoginView):
