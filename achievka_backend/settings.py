@@ -115,7 +115,7 @@ SOCIALACCOUNT_PROVIDERS = {
     "microsoft": {
         "APP": [
             {
-                "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e034",
+                "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e0341",
                 "secret": "f84eb9d6-9345-4a37-a15f-62022002f04d",
                 "settings": {
                     "tenant": "organizations",  # multi-tenant
