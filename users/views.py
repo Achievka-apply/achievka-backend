@@ -82,7 +82,7 @@ class CustomLoginView(APIView):
             httponly = True,
             secure   = not settings.DEBUG,  # True на проде
             samesite = 'Strict',
-            path     = '/api/auth/token/refresh/'  # доступно только этому пути
+           # path     = '/api/auth/token/refresh/'  # доступно только этому пути
         )
         return response
 
@@ -177,7 +177,7 @@ class CustomPasswordResetView(APIView):
 
         # 2) собираем ссылку на фронт
         reset_link = (
-            f"{settings.FRONTEND_URL}/reset-password"
+            "https://achievka.com/reset-password"
             f"?uid={uid}&token={token}"
         )
 
@@ -260,6 +260,7 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = PatchedOAuth2Client
     callback_url = "https://dev.achievka.com/app"
+
 
 # Facebook
 class FacebookLogin(SocialLoginView):
