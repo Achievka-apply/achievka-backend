@@ -153,13 +153,19 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+
+}
+REST_AUTH = {
+    # switch on JWT instead of TokenAuth
     'USE_JWT': True,                             # ← must be here, not REST_USE_JWT
+    # cookie names
     'JWT_AUTH_COOKIE': 'access_token_cookie',
     'JWT_AUTH_REFRESH_COOKIE': 'refresh_token_cookie',
     # disable the DRF Token model
     'TOKEN_MODEL': None,
+    # if you’d ever overridden REST_AUTH_TOKEN_CREATOR you could set it here
+    # 'TOKEN_CREATOR': 'dj_rest_auth.utils.default_create_token',
 }
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=6000),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -199,7 +205,7 @@ REST_USE_JWT = True
 JWT_AUTH_COOKIE = 'access_token_cookie'
 JWT_AUTH_REFRESH_COOKIE = 'refresh_token_cookie'
 TOKEN_MODEL = None
-REST_AUTH_TOKEN_MODEL = None
+_TOKEN_MODEL = None
 
 AUTH_USER_MODEL = 'users.User'
 
