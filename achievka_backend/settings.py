@@ -115,7 +115,7 @@ SOCIALACCOUNT_PROVIDERS = {
    "microsoft": {
        "APP": {
            "client_id": "46ed08f7-97cd-4fa9-bdfc-eb89449e0341",  # ✅ полный ID из Azure
-           "secret":    "f84eb9d6-9345-4a37-a15f-62022002f04d",
+           "secret":    "2PI8Q~IWbggE7lnP4LJvLv_B4PuCMSiBx9IBmcv8",
            "key":       ""
        },
        "SCOPE": ["openid", "email", "profile", "offline_access", "User.Read"],
