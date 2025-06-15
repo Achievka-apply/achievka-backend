@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     # THIRD-PARTY APPS
     'corsheaders',
     'rest_framework',
-    #'rest_framework.authtoken',
+    'rest_framework.authtoken',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -153,6 +153,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'USE_JWT': True,                             # ← must be here, not REST_USE_JWT
+    'JWT_AUTH_COOKIE': 'access_token_cookie',
+    'JWT_AUTH_REFRESH_COOKIE': 'refresh_token_cookie',
+    # disable the DRF Token model
+    'TOKEN_MODEL': None,
 }
 
 SIMPLE_JWT = {
