@@ -273,7 +273,11 @@ class GoogleLogin(SocialLoginView):
 class FacebookLogin(SocialLoginView):
     adapter_class = FacebookOAuth2Adapter
     client_class  = PatchedOAuth2Client
-    callback_url  = "https://dev.achievka.com/app"
+    callback_url  = "https://dev.achievka.com/facebook/callback"
+    def get_callback_url(self, request):
+        # если фронтенд прислал в POST поле redirect_uri — используем его,
+        # иначе упадём на статический атрибут выше
+        return request.data.get('redirect_uri') or self.callback_url
 # Microsoft
 class MicrosoftLogin(SocialLoginView):
     adapter_class = MicrosoftGraphOAuth2Adapter
