@@ -88,6 +88,19 @@ CSRF_TRUSTED_ORIGINS = [
 # (Опционально, но рекомендовано для HTTPS)
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+CORS_EXPOSE_HEADERS = ["Content-Type"]
+CORS_ALLOW_HEADERS = [
+  "authorization",
+  "content-type",
+  "accept",
+  "origin",
+  "user-agent",
+  "x-requested-with",
+  # и т.д.
+]
+CORS_ALLOW_METHODS = [
+  "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+]
 
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
