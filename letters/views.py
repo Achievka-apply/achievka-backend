@@ -151,7 +151,7 @@ class LetterViewSet(viewsets.ModelViewSet):
         try:
               # ← Старая строка openai.ChatCompletion.create() заменяется на новый интерфейс:
             completion = openai.chat.completions.create(
-                model = assistant_id,  # вместо assistant=
+                assistant = assistant_id,  # вместо assistant=
                 messages = history,
                 temperature = 0.7,
                 response_format = "json_schema"  # поддержка json_schema, если требуется
