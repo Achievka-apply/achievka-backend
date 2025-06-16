@@ -82,10 +82,9 @@ class LetterViewSet(viewsets.ModelViewSet):
         letter = self.get_object()
 
         # ─── Гейтинг по подписке ───
-        profile = getattr(request.user, 'profile', None)
-        if not profile or not profile.has_subscription:
-            # Если нет подписки, возвращаем locked
+        if not getattr(request.user, 'has_subscription', False):
             return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
+
         # ────────────────────────────
 
         version_num = request.data.get('version_num')
