@@ -71,7 +71,7 @@ class LetterViewSet(viewsets.ModelViewSet):
         serializer = LetterVersionSerializer(version)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], url_path='analyse_stream')
+    @action(detail=True, methods=['post', 'get', 'options'], url_path='analyse_stream')
     def analyse_stream(self, request, pk=None):
         """
         POST /api/letters/{id}/analyse_stream/
