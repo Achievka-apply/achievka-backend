@@ -119,14 +119,17 @@ class LetterViewSet(viewsets.ModelViewSet):
 
         # Формируем system и user
         system_msg = {
-            "role": "system",
-            "content": (
-                "You are a university admissions officer and academic program director. "
-                "Critically evaluate the following letter using international admissions standards "
-                "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
-                "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities."
-            )
-        }
+                        "role": "system",
+                        "content": (
+                                                            "You are a university admissions officer and academic program director. "
+                                             "Critically evaluate the following letter using international admissions standards "
+                                             "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
+                                             "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities. "
+                                             "IMPORTANT: **Return your entire response as a single JSON object** with exactly these keys: "
+                                             "`criteria_evaluation` (array of criterion objects) and `overall_feedback` (object with summary and recommendations). "
+                                             "Do not include any extra prose or markdown—only the JSON."
+                                            )
+                                    }
         user_msg = {"role": "user", "content": letter_text}
 
         history.extend([system_msg, user_msg])
@@ -158,8 +161,19 @@ class LetterViewSet(viewsets.ModelViewSet):
                 temperature = 0.7,
                 #response_format = ResponseFormat.JSON_SCHEMA
             )
+
             content = completion.choices[0].message.content
-            data = json.loads(content)
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError:
+                logging.error("Non-JSON from OpenAI: %r", content)
+                return Response(
+                {
+                    "detail": "OpenAI вернул невалидный JSON",
+                    "raw": content
+                },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
             try:
                   data = json.loads(content)
