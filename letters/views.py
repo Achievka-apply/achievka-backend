@@ -10,7 +10,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from openai.enums import ResponseFormat
+#from openai.enums import ResponseFormat
 
 from .models import Letter, LetterVersion, VersionMessage
 from .serializers import LetterSerializer, LetterVersionSerializer
@@ -156,10 +156,17 @@ class LetterViewSet(viewsets.ModelViewSet):
                 model = "gpt-4.1",
                 messages = history,
                 temperature = 0.7,
-                response_format = ResponseFormat.JSON_SCHEMA
+                #response_format = ResponseFormat.JSON_SCHEMA
             )
             content = completion.choices[0].message.content
             data = json.loads(content)
+
+            try:
+                  data = json.loads(content)
+            except json.JSONDecodeError:
+                return Response(
+                {"detail": "Не удалось распарсить ответ OpenAI", "raw": content},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
             logging.exception("OpenAI analyse error")
             return Response(
