@@ -149,12 +149,12 @@ class LetterViewSet(viewsets.ModelViewSet):
 
         # Синхронный вызов OpenAI без стрима
         try:
-            completion = openai.ChatCompletion.create(
-                assistant=assistant_id,
-                messages=history,
-                temperature=0.7,
-                stream=False,
-                response_format="json_schema"
+              # ← Старая строка openai.ChatCompletion.create() заменяется на новый интерфейс:
+            completion = openai.chat.completions.create(
+                model = assistant_id,  # вместо assistant=
+                messages = history,
+                temperature = 0.7,
+                response_format = "json_schema"  # поддержка json_schema, если требуется
             )
             content = completion.choices[0].message.content
             data = json.loads(content)
