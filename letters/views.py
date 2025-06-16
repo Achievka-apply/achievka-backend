@@ -16,66 +16,121 @@ from .models import Letter, LetterVersion, VersionMessage
 from .serializers import LetterSerializer, LetterVersionSerializer
 from .s3_utils import upload_letter_text
 
+# Устанавливаем API-ключ
 openai.api_key = settings.OPENAI_API_KEY
 
 
 class LetterViewSet(viewsets.ModelViewSet):
+    """
+    CRUD-эндпоинты для писем + versions + analyse
+    с учётом истории и гейтинга по подписке.
+    """
     queryset = Letter.objects.all()
     serializer_class = LetterSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Доступ только к своим письмам
         return self.queryset.filter(user=self.request.user)
 
     def perform_create(self, serializer):
+        # При создании фиксируем владельца
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['get', 'post'], url_path='versions')
+    def versions(self, request, pk=None):
+        """
+        GET  /api/letters/{id}/versions/  — список всех версий письма
+        POST /api/letters/{id}/versions/  — сохранить новую версию в S3
+        """
+        letter = self.get_object()
+
+        # Список версий
+        if request.method == 'GET':
+            qs = letter.versions.order_by('version_num')
+            serializer = LetterVersionSerializer(qs, many=True)
+            return Response(serializer.data)
+
+        # Создание новой версии
+        text = request.data.get('text', '')
+        autosave = request.data.get('autosave', True)
+
+        # определяем номер
+        last = letter.versions.order_by('-version_num').first()
+        next_num = (last.version_num + 1) if last else 1
+
+        # заливаем текст в S3
+        s3_key = upload_letter_text(
+            user_id=str(request.user.id),
+            letter_id=str(letter.id),
+            version_num=next_num,
+            text=text
+        )
+
+        # создаём запись в БД
+        version = LetterVersion.objects.create(
+            letter=letter,
+            version_num=next_num,
+            s3_key=s3_key
+        )
+
+        serializer = LetterVersionSerializer(version)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='analyse')
     def analyse(self, request, pk=None):
         """
         POST /api/letters/{id}/analyse/
-        Использует Assistants API: создаёт thread, добавляет user message, запускает run,
-        ждёт завершения и возвращает JSON-ответ.
-        Ожидает в body: { "version_num": <номер версии> }
+        Использует Assistants API:
+          1) создаёт новый thread
+          2) добавляет в него всю историю + текущее письмо
+          3) запускает run у вашего assistant_id
+          4) ждёт завершения и возвращает JSON-ответ
+        Ожидает в тело: { "version_num": <номер версии> }
         """
         letter = self.get_object()
 
         # gating по подписке
         if not getattr(request.user, 'has_subscription', False):
-            return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
+            return Response({"locked": True},
+                            status=status.HTTP_402_PAYMENT_REQUIRED)
 
         version_num = request.data.get("version_num")
         if not version_num:
             return Response({"detail": "version_num is required"},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        # получаем нужную версию
         try:
             version = letter.versions.get(version_num=version_num)
         except LetterVersion.DoesNotExist:
             return Response({"detail": "Version not found"},
                             status=status.HTTP_404_NOT_FOUND)
 
-        # Загрузка текста письма из S3
+        # читаем текст письма из S3
         s3 = boto3.client("s3", region_name=settings.AWS_REGION)
         obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
         letter_text = obj["Body"].read().decode("utf-8")
 
-        # Собираем историю предыдущих сообщений
+        # историю прошлых сообщений
         prev_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in version.messages.all()
         ]
 
-        # Создаём новый thread
+        # создаём новый thread
         try:
             thread = openai.beta.threads.create()
         except Exception as e:
             logging.exception("Failed to create thread")
-            return Response({"detail": "OpenAI thread creation failed", "error": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "OpenAI thread creation failed", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        # Помещаем в thread всю историю + текущее письмо как user
-        for m in prev_messages + [{"role": "user", "content": letter_text}]:
+        # добавляем в thread и историю, и текущее сообщение
+        all_messages = prev_messages + [{"role": "user", "content": letter_text}]
+        for m in all_messages:
             try:
                 openai.beta.threads.messages.create(
                     thread_id=thread.id,
@@ -84,13 +139,17 @@ class LetterViewSet(viewsets.ModelViewSet):
                 )
             except Exception as e:
                 logging.exception("Failed to add message to thread")
-                return Response({"detail": "OpenAI thread messaging failed", "error": str(e)},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"detail": "Thread messaging failed", "error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
-        # Сохраняем user-сообщение в БД
-        VersionMessage.objects.create(version=version, role="user", content=letter_text)
+        # сохраняем user-сообщение в БД
+        VersionMessage.objects.create(
+            version=version, role="user", content=letter_text
+        )
 
-        # Выбираем нужного Assistant по типу письма
+        # выбираем assistant_id по типу письма
         assistant_map = {
             "common_app": settings.ASSISTANT_COMMON_APP_ID,
             "ucas":       settings.ASSISTANT_UCAS_ID,
@@ -101,7 +160,7 @@ class LetterViewSet(viewsets.ModelViewSet):
             return Response({"detail": f"Unknown letter type {letter.type}"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Запускаем run у Assistant-а
+        # запускаем run
         try:
             run = openai.beta.threads.runs.create(
                 thread_id=thread.id,
@@ -109,37 +168,45 @@ class LetterViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logging.exception("Failed to start run")
-            return Response({"detail": "OpenAI run creation failed", "error": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "Run creation failed", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        # Ожидаем завершения
+        # polling до статуса READY
         while run.status in ("queued", "in_progress"):
             time.sleep(1)
             try:
                 run = openai.beta.threads.runs.retrieve(
-                    thread_id=thread.id,
-                    run_id=run.id
+                    thread_id=thread.id, run_id=run.id
                 )
             except Exception as e:
-                logging.exception("Failed to retrieve run status")
-                return Response({"detail": "OpenAI run polling failed", "error": str(e)},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logging.exception("Failed to poll run status")
+                return Response(
+                    {"detail": "Run polling failed", "error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
-        # Забираем ответы из thread.messages
+        # получаем список сообщений thread’а
         try:
             msgs = openai.beta.threads.messages.list(thread_id=thread.id)
         except Exception as e:
             logging.exception("Failed to list thread messages")
-            return Response({"detail": "OpenAI thread list failed", "error": str(e)},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "Listing thread messages failed", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        # Первый ответ от ассистента
         if not msgs.data:
-            return Response({"detail": "No assistant response"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "No assistant response"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # извлекаем текст первого сообщения ассистента
         assistant_reply = msgs.data[0].content[0].text.value
 
-        # Парсим JSON из текста
+        # парсим JSON
         try:
             data = json.loads(assistant_reply)
         except json.JSONDecodeError:
@@ -149,9 +216,10 @@ class LetterViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # Сохраняем ответ ассистента в БД
+        # сохраняем ответ ассистента
         VersionMessage.objects.create(
             version=version, role="assistant", content=assistant_reply
         )
 
+        # возвращаем распарсенный JSON
         return Response(data, status=status.HTTP_200_OK)

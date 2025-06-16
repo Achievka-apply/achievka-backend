@@ -7,9 +7,6 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework.routers import DefaultRouter
-
-from letters.views import LetterViewSet
 
 # API definition
 schema_view = get_schema_view(
@@ -24,8 +21,6 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
-router = DefaultRouter()
-router.register(r'letters', LetterViewSet, basename='letter')
 
 urlpatterns = [
     path('api/admin/', admin.site.urls),
@@ -34,7 +29,7 @@ urlpatterns = [
     # ваши приложения
     path('api/auth/', include('users.urls', namespace='users')),
     path('api/',      include('universities.urls', namespace='universities')),
-    #path('api/', include('letters.urls', namespace='letters')),
+    path('api/', include('letters.urls', namespace='letters')),
 
     # схемы Swagger / Redoc
     re_path(r'^swagger(?P<format>\.json|\.yaml)$',
