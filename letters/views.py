@@ -1,11 +1,11 @@
 # letters/views.py
 
 import logging
-
 import boto3
+import json
 import openai
+
 from django.conf import settings
-from django.http import StreamingHttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -21,8 +21,8 @@ openai.api_key = settings.OPENAI_API_KEY
 
 class LetterViewSet(viewsets.ModelViewSet):
     """
-    CRUD-эндпоинты для писем + версии + analyse_stream
-    с памятью и гейтингом по подписке на уровне User.has_subscription.
+    CRUD-эндпоинты для писем + версии + analyse
+    с памятью и гейтингом по подписке (User.has_subscription).
     """
     queryset = Letter.objects.all()
     serializer_class = LetterSerializer
@@ -50,7 +50,7 @@ class LetterViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         # POST → создать новую версию
-        text = request.data.get('text', '')
+        text     = request.data.get('text', '')
         autosave = request.data.get('autosave', True)
 
         # определяем следующий номер версии
@@ -75,132 +75,100 @@ class LetterViewSet(viewsets.ModelViewSet):
         serializer = LetterVersionSerializer(version)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post', 'get', 'options'], url_path='analyse_stream')
-    def analyse_stream(self, request, pk=None):
+
+    @action(detail=True, methods=['post'], url_path='analyse')
+    def analyse(self, request, pk=None):
         """
-        POST /api/letters/{id}/analyse_stream/
-        Запускает стриминг анализа письма, при этом модель «помнит» всю историю
-        и применяет гейтинг по подписке.
-        Ожидает в теле: { "version_num": <номер версии> }
+        POST /api/letters/{id}/analyse/
+        Сохраняет новую версию в S3 (автосохранение уже сделано) и
+        возвращает полный JSON-ответ от OpenAI без SSE.
+        Ожидает в body: { "version_num": <номер версии> }
         """
+        letter = self.get_object()
 
-        # --- CORS helper для preflight, ошибки и успешного SSE ---
-        origin = request.headers.get("Origin", "")
-        allowed_origins = {"http://localhost:3000", "https://dev.achievka.com"}
+        # ─── Гейтинг по подписке ───
+        if not getattr(request.user, 'has_subscription', False):
+            return Response({"locked": True},
+                            status=status.HTTP_402_PAYMENT_REQUIRED)
+        # ────────────────────────────
 
-        def cors_resp(resp):
-            if origin in allowed_origins:
-                resp["Access-Control-Allow-Origin"] = origin
-                resp["Access-Control-Allow-Credentials"] = "true"
-                resp["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
-                resp["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-            return resp
+        # Берём номер версии
+        version_num = request.data.get('version_num')
+        if not version_num:
+            return Response({"detail": "version_num is required"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        # 1) Preflight OPTIONS
-        if request.method == "OPTIONS":
-            return cors_resp(Response(status=status.HTTP_200_OK))
-
+        # Ищем версию
         try:
-            letter = self.get_object()
+            version = letter.versions.get(version_num=version_num)
+        except LetterVersion.DoesNotExist:
+            return Response({"detail": "Version not found"},
+                            status=status.HTTP_404_NOT_FOUND)
 
-            # ─── Гейтинг по подписке ───
-            if not getattr(request.user, 'has_subscription', False):
-                return cors_resp(
-                    Response({"locked": True},
-                             status=status.HTTP_402_PAYMENT_REQUIRED)
-                )
-            # ────────────────────────────
+        # Загружаем текст письма из S3
+        s3 = boto3.client('s3', region_name=settings.AWS_REGION)
+        obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
+        letter_text = obj['Body'].read().decode('utf-8')
 
-            # Проверяем version_num
-            version_num = request.data.get('version_num')
-            if not version_num:
-                return cors_resp(
-                    Response({"detail": "version_num is required"},
-                             status=status.HTTP_400_BAD_REQUEST)
-                )
+        # Собираем историю сообщений
+        history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in version.messages.all()
+        ]
 
-            # Получаем нужную версию
-            try:
-                version = letter.versions.get(version_num=version_num)
-            except LetterVersion.DoesNotExist:
-                return cors_resp(
-                    Response({"detail": "Version not found"},
-                             status=status.HTTP_404_NOT_FOUND)
-                )
-
-            # 2) Загружаем текст письма из S3
-            s3 = boto3.client('s3', region_name=settings.AWS_REGION)
-            obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
-            letter_text = obj['Body'].read().decode('utf-8')
-
-            # 3) Собираем историю сообщений
-            history = []
-            for msg in version.messages.all():
-                history.append({"role": msg.role, "content": msg.content})
-
-            # Системное сообщение с инструкциями
-            system_msg = {
-                "role": "system",
-                "content": (
-                    "You are a university admissions officer and academic program director. "
-                    "Critically evaluate the following letter using international admissions standards "
-                    "across six criteria: Purpose and Motivation, Academic Alignment, "
-                    "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities."
-                )
-            }
-            user_msg = {"role": "user", "content": letter_text}
-
-            # Добавляем в историю и сохраняем
-            history.extend([system_msg, user_msg])
-            VersionMessage.objects.bulk_create([
-                VersionMessage(version=version, role=m["role"], content=m["content"])
-                for m in (system_msg, user_msg)
-            ])
-
-            # Выбор ассистента по типу письма
-            assistant_map = {
-                'common_app': settings.ASSISTANT_COMMON_APP_ID,
-                'ucas':       settings.ASSISTANT_UCAS_ID,
-                'motivation': settings.ASSISTANT_MOTIVATION_ID,
-            }
-            assistant_id = assistant_map.get(letter.type)
-            if not assistant_id:
-                return cors_resp(
-                    Response({"detail": "Unknown letter type"},
-                             status=status.HTTP_400_BAD_REQUEST)
-                )
-
-            # Генератор SSE-потока
-            def event_stream():
-                full_reply = ""
-                response = openai.ChatCompletion.create(
-                    assistant=assistant_id,
-                    messages=history,
-                    temperature=0.7,
-                    stream=True,
-                    response_format="json_schema"
-                )
-                for chunk in response:
-                    delta = chunk.choices[0].delta.get("content")
-                    if delta:
-                        full_reply += delta
-                        yield f"data: {delta}\n\n"
-                # Сохраняем итоговый ответ
-                VersionMessage.objects.create(
-                    version=version, role="assistant", content=full_reply
-                )
-                yield "data: [DONE]\n\n"
-
-            # 4) Возвращаем StreamingHttpResponse с CORS
-            resp = StreamingHttpResponse(
-                event_stream(),
-                content_type="text/event-stream"
+        # Формируем system и user
+        system_msg = {
+            "role": "system",
+            "content": (
+                "You are a university admissions officer and academic program director. "
+                "Critically evaluate the following letter using international admissions standards "
+                "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
+                "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities."
             )
-            return cors_resp(resp)
+        }
+        user_msg = {"role": "user", "content": letter_text}
 
+        history.extend([system_msg, user_msg])
+
+        # Сохраняем system+user в БД
+        VersionMessage.objects.bulk_create([
+            VersionMessage(version=version, role=m["role"], content=m["content"])
+            for m in (system_msg, user_msg)
+        ])
+
+        # Выбираем нужного ассистента
+        assistant_map = {
+            'common_app': settings.ASSISTANT_COMMON_APP_ID,
+            'ucas':       settings.ASSISTANT_UCAS_ID,
+            'motivation': settings.ASSISTANT_MOTIVATION_ID,
+        }
+        assistant_id = assistant_map.get(letter.type)
+        if not assistant_id:
+            return Response({"detail": "Unknown letter type"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Синхронный вызов OpenAI без стрима
+        try:
+            completion = openai.ChatCompletion.create(
+                assistant=assistant_id,
+                messages=history,
+                temperature=0.7,
+                stream=False,
+                response_format="json_schema"
+            )
+            content = completion.choices[0].message.content
+            data = json.loads(content)
         except Exception as e:
-            logging.exception("Error in analyse_stream")
-            return cors_resp(
-                Response({"detail": "Internal server error"},
-                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logging.exception("OpenAI analyse error")
+            return Response(
+                {"detail": "OpenAI error", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+        # Сохраняем полный ответ ассистента
+        VersionMessage.objects.create(
+            version=version, role="assistant", content=content
+        )
+
+        # Возвращаем готовый JSON
+        return Response(data, status=status.HTTP_200_OK)
