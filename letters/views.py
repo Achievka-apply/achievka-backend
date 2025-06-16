@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from .models import Letter, LetterVersion, VersionMessage
 from .serializers import LetterSerializer, LetterVersionSerializer
-from .s3_utils import upload_letter_text, get_presigned_url
+from .s3_utils import upload_letter_text
 
 # Устанавливаем ключ OpenAI
 openai.api_key = settings.OPENAI_API_KEY
@@ -84,7 +84,6 @@ class LetterViewSet(viewsets.ModelViewSet):
         # ─── Гейтинг по подписке ───
         if not getattr(request.user, 'has_subscription', False):
             return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
-
         # ────────────────────────────
 
         version_num = request.data.get('version_num')
@@ -169,8 +168,17 @@ class LetterViewSet(viewsets.ModelViewSet):
             )
             yield "data: [DONE]\n\n"
 
-        # Возвращаем StreamingHttpResponse с SSE-форматом
-        return StreamingHttpResponse(
+        # Возвращаем StreamingHttpResponse с ручными CORS-заголовками
+        response = StreamingHttpResponse(
             event_stream(),
             content_type="text/event-stream"
         )
+        allowed = {"http://localhost:3000", "https://dev.achievka.com"}  # строка 112
+        origin = request.headers.get("Origin")  # строка 113
+
+        if origin in allowed:  # строка 114
+                response["Access-Control-Allow-Origin"] = origin  # строка 115
+                response["Access-Control-Allow-Credentials"] = "true"  # строка 116
+                response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"  # строка 117
+                response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"  # строка 118
+        return response
