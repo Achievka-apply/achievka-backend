@@ -156,6 +156,8 @@ class LetterViewSet(viewsets.ModelViewSet):
             "motivation": settings.ASSISTANT_MOTIVATION_ID,
         }
         assistant_id = assistant_map.get(letter.type)
+        logging.info(f"Using assistant_id: {assistant_id} for letter type: {letter.type}")
+
         if not assistant_id:
             return Response({"detail": f"Unknown letter type {letter.type}"},
                             status=status.HTTP_400_BAD_REQUEST)
