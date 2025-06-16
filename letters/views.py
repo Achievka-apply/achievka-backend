@@ -1,5 +1,7 @@
 # letters/views.py
 
+import logging
+
 import boto3
 import openai
 from django.conf import settings
@@ -16,9 +18,11 @@ from .s3_utils import upload_letter_text
 # Устанавливаем ключ OpenAI
 openai.api_key = settings.OPENAI_API_KEY
 
+
 class LetterViewSet(viewsets.ModelViewSet):
     """
-    CRUD-эндпоинты для писем + версии + analyse_stream с памятью и гейтингом по подписке.
+    CRUD-эндпоинты для писем + версии + analyse_stream
+    с памятью и гейтингом по подписке на уровне User.has_subscription.
     """
     queryset = Letter.objects.all()
     serializer_class = LetterSerializer
@@ -36,7 +40,7 @@ class LetterViewSet(viewsets.ModelViewSet):
     def versions(self, request, pk=None):
         """
         GET  /api/letters/{id}/versions/  — список версий
-        POST /api/letters/{id}/versions/  — сохраняет новую версию письма в S3
+        POST /api/letters/{id}/versions/ — сохраняет новую версию письма в S3
         """
         letter = self.get_object()
 
@@ -46,7 +50,7 @@ class LetterViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
         # POST → создать новую версию
-        text     = request.data.get('text', '')
+        text = request.data.get('text', '')
         autosave = request.data.get('autosave', True)
 
         # определяем следующий номер версии
@@ -79,106 +83,124 @@ class LetterViewSet(viewsets.ModelViewSet):
         и применяет гейтинг по подписке.
         Ожидает в теле: { "version_num": <номер версии> }
         """
-        letter = self.get_object()
 
-        # ─── Гейтинг по подписке ───
-        if not getattr(request.user, 'has_subscription', False):
-            return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
-        # ────────────────────────────
+        # --- CORS helper для preflight, ошибки и успешного SSE ---
+        origin = request.headers.get("Origin", "")
+        allowed_origins = {"http://localhost:3000", "https://dev.achievka.com"}
 
-        version_num = request.data.get('version_num')
-        if not version_num:
-            return Response(
-                {"detail": "version_num is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        def cors_resp(resp):
+            if origin in allowed_origins:
+                resp["Access-Control-Allow-Origin"] = origin
+                resp["Access-Control-Allow-Credentials"] = "true"
+                resp["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"
+                resp["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            return resp
 
-        # Получаем нужную версию
+        # 1) Preflight OPTIONS
+        if request.method == "OPTIONS":
+            return cors_resp(Response(status=status.HTTP_200_OK))
+
         try:
-            version = letter.versions.get(version_num=version_num)
-        except LetterVersion.DoesNotExist:
-            return Response(
-                {"detail": "Version not found"},
-                status=status.HTTP_404_NOT_FOUND
+            letter = self.get_object()
+
+            # ─── Гейтинг по подписке ───
+            if not getattr(request.user, 'has_subscription', False):
+                return cors_resp(
+                    Response({"locked": True},
+                             status=status.HTTP_402_PAYMENT_REQUIRED)
+                )
+            # ────────────────────────────
+
+            # Проверяем version_num
+            version_num = request.data.get('version_num')
+            if not version_num:
+                return cors_resp(
+                    Response({"detail": "version_num is required"},
+                             status=status.HTTP_400_BAD_REQUEST)
+                )
+
+            # Получаем нужную версию
+            try:
+                version = letter.versions.get(version_num=version_num)
+            except LetterVersion.DoesNotExist:
+                return cors_resp(
+                    Response({"detail": "Version not found"},
+                             status=status.HTTP_404_NOT_FOUND)
+                )
+
+            # 2) Загружаем текст письма из S3
+            s3 = boto3.client('s3', region_name=settings.AWS_REGION)
+            obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
+            letter_text = obj['Body'].read().decode('utf-8')
+
+            # 3) Собираем историю сообщений
+            history = []
+            for msg in version.messages.all():
+                history.append({"role": msg.role, "content": msg.content})
+
+            # Системное сообщение с инструкциями
+            system_msg = {
+                "role": "system",
+                "content": (
+                    "You are a university admissions officer and academic program director. "
+                    "Critically evaluate the following letter using international admissions standards "
+                    "across six criteria: Purpose and Motivation, Academic Alignment, "
+                    "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities."
+                )
+            }
+            user_msg = {"role": "user", "content": letter_text}
+
+            # Добавляем в историю и сохраняем
+            history.extend([system_msg, user_msg])
+            VersionMessage.objects.bulk_create([
+                VersionMessage(version=version, role=m["role"], content=m["content"])
+                for m in (system_msg, user_msg)
+            ])
+
+            # Выбор ассистента по типу письма
+            assistant_map = {
+                'common_app': settings.ASSISTANT_COMMON_APP_ID,
+                'ucas':       settings.ASSISTANT_UCAS_ID,
+                'motivation': settings.ASSISTANT_MOTIVATION_ID,
+            }
+            assistant_id = assistant_map.get(letter.type)
+            if not assistant_id:
+                return cors_resp(
+                    Response({"detail": "Unknown letter type"},
+                             status=status.HTTP_400_BAD_REQUEST)
+                )
+
+            # Генератор SSE-потока
+            def event_stream():
+                full_reply = ""
+                response = openai.ChatCompletion.create(
+                    assistant=assistant_id,
+                    messages=history,
+                    temperature=0.7,
+                    stream=True,
+                    response_format="json_schema"
+                )
+                for chunk in response:
+                    delta = chunk.choices[0].delta.get("content")
+                    if delta:
+                        full_reply += delta
+                        yield f"data: {delta}\n\n"
+                # Сохраняем итоговый ответ
+                VersionMessage.objects.create(
+                    version=version, role="assistant", content=full_reply
+                )
+                yield "data: [DONE]\n\n"
+
+            # 4) Возвращаем StreamingHttpResponse с CORS
+            resp = StreamingHttpResponse(
+                event_stream(),
+                content_type="text/event-stream"
             )
+            return cors_resp(resp)
 
-        # Загружаем текст письма из S3
-        s3 = boto3.client('s3', region_name=settings.AWS_REGION)
-        obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
-        letter_text = obj['Body'].read().decode('utf-8')
-
-        # Собираем всю историю сообщений (system/user/assistant) для этой версии
-        history = []
-        for msg in version.messages.all():
-            history.append({"role": msg.role, "content": msg.content})
-
-        # Системное сообщение с инструкциями
-        system_msg = {
-            "role": "system",
-            "content": (
-                "You are a university admissions officer and academic program director. "
-                "Critically evaluate the following motivation letter using international admissions standards "
-                "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
-                "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities and Compliance."
+        except Exception as e:
+            logging.exception("Error in analyse_stream")
+            return cors_resp(
+                Response({"detail": "Internal server error"},
+                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             )
-        }
-        # Пользовательское сообщение с текстом письма
-        user_msg = {"role": "user", "content": letter_text}
-
-        # Добавляем system и user в историю
-        history.extend([system_msg, user_msg])
-
-        # Сохраняем их в БД
-        VersionMessage.objects.bulk_create([
-            VersionMessage(version=version, role=m["role"], content=m["content"])
-            for m in (system_msg, user_msg)
-        ])
-
-        # Выбираем ассистента по типу письма
-        assistant_map = {
-            'common_app': settings.ASSISTANT_COMMON_APP_ID,
-            'ucas':       settings.ASSISTANT_UCAS_ID,
-            'motivation': settings.ASSISTANT_MOTIVATION_ID,
-        }
-        assistant_id = assistant_map.get(letter.type)
-        if not assistant_id:
-            return Response(
-                {"detail": "Unknown letter type"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Функция-генератор для стриминга SSE
-        def event_stream():
-            full_reply = ""
-            response = openai.ChatCompletion.create(
-                assistant=assistant_id,
-                messages=history,
-                temperature=0.7,
-                stream=True,
-                response_format="json_schema"
-            )
-            for chunk in response:
-                delta = chunk.choices[0].delta.get("content")
-                if delta:
-                    full_reply += delta
-                    yield f"data: {delta}\n\n"
-            # Сохраняем полный ответ ассистента
-            VersionMessage.objects.create(
-                version=version, role="assistant", content=full_reply
-            )
-            yield "data: [DONE]\n\n"
-
-        # Возвращаем StreamingHttpResponse с ручными CORS-заголовками
-        response = StreamingHttpResponse(
-            event_stream(),
-            content_type="text/event-stream"
-        )
-        allowed = {"http://localhost:3000", "https://dev.achievka.com"}  # строка 112
-        origin = request.headers.get("Origin")  # строка 113
-
-        if origin in allowed:  # строка 114
-                response["Access-Control-Allow-Origin"] = origin  # строка 115
-                response["Access-Control-Allow-Credentials"] = "true"  # строка 116
-                response["Access-Control-Allow-Methods"] = "POST, GET, OPTIONS"  # строка 117
-                response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"  # строка 118
-        return response
