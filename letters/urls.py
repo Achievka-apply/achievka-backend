@@ -1,4 +1,3 @@
-
 from django.urls import path
 from .views import LetterViewSet
 
@@ -26,8 +25,8 @@ urlpatterns = [
         name='letter-versions'
     ),
     path(
-        'letters/<uuid:pk>/analyse_stream/',
-        LetterViewSet.as_view({'post': 'analyse_stream'}),
-        name='letter-analyse-stream'
+        'letters/<uuid:pk>/analyse/',
+        LetterViewSet.as_view({'post': 'analyse'}),
+        name='letter-analyse'
     ),
 ]
