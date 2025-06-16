@@ -116,20 +116,63 @@ class LetterViewSet(viewsets.ModelViewSet):
             {"role": msg.role, "content": msg.content}
             for msg in version.messages.all()
         ]
+        system_prompts = {
+            'common_app': (
+                "ROLE\n"
+                "You are an experienced U.S. college admissions officer. "
+                "Your task is to critically evaluate Common App personal essays submitted by undergraduate applicants. "
+                "You will provide detailed, criterion-specific feedback based on established expectations in admissions writing.\n\n"
+                "INPUT\n"
+                "You will receive:\n"
+                "- A complete Common App essay (up to 650 words)\n"
+                "- The specific Common App prompt the student is responding to\n\n"
+                "CRITERIA DEFINITIONS\n"
+                "…(далее весь блок из вашего ТЗ для common_app)…\n\n"
+                "INSTRUCTIONS\n"
+                "…(инструкции по формату JSON и т. д.)"
+            ),
+            'ucas': (
+                "Role\n"
+                "You are a UK university admissions tutor with experience reviewing UCAS personal statements. "
+                "You are tasked with rigorously evaluating responses to the three new UCAS personal statement questions. "
+                "Your goal is to provide detailed, section-specific feedback using academic standards and a critical, structured review style.\n\n"
+                "INPUT\n"
+                "You will receive:\n"
+                "- Response to Question 1: Why do you want to study this course or subject?\n"
+                "- Response to Question 2: How have your qualifications and studies helped you to prepare?\n"
+                "- Response to Question 3: What else have you done outside of education to prepare, and why are these experiences useful?\n"
+                "- The target course or subject the applicant is applying to\n\n"
+                "EVALUATION CRITERIA\n"
+                "…(далее весь блок из вашего ТЗ для ucas)…\n\n"
+                "INSTRUCTIONS\n"
+                "…(инструкции по JSON-формату и т. д.)"
+            ),
+            'motivation': (
+                "ROLE\n"
+                "You are a university admissions officer and academic program director. "
+                "You are tasked with critically evaluating motivation letters submitted by students applying to academic programs worldwide. "
+                "These letters may be in essay or Q&A format and will vary in structure depending on the university or country. "
+                "Your evaluation must be rigorous, structured, and based on international admissions standards.\n\n"
+                "INPUT\n"
+                "You will be given:\n"
+                "- The full motivation letter (either essay-style or Q&A-style)\n"
+                "- The target university name\n"
+                "- The target program name\n"
+                "- (Optional) Any specific prompts or questions the applicant was asked to respond to\n\n"
+                "EVALUATION CRITERIA (6 TOTAL)\n"
+                "…(далее весь блок из вашего ТЗ для motivation)…\n\n"
+                "INSTRUCTIONS\n"
+                "…(инструкции по JSON-формату и т. д.)"
+            ),
+        }
+        prompt = system_prompts.get(letter.type)
+        if not prompt:
+            return Response(
+                {"detail": f"Unknown letter type {letter.type}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Формируем system и user
-        system_msg = {
-                        "role": "system",
-                        "content": (
-                                                            "You are a university admissions officer and academic program director. "
-                                             "Critically evaluate the following letter using international admissions standards "
-                                             "across six criteria: Purpose and Motivation, Academic and Professional Alignment, "
-                                             "Depth and Specificity, Structure and Clarity, Engagement and Authenticity, Formalities. "
-                                             "IMPORTANT: **Return your entire response as a single JSON object** with exactly these keys: "
-                                             "`criteria_evaluation` (array of criterion objects) and `overall_feedback` (object with summary and recommendations). "
-                                             "Do not include any extra prose or markdown—only the JSON."
-                                            )
-                                    }
+        system_msg = {"role": "system", "content": prompt}
         user_msg = {"role": "user", "content": letter_text}
 
         history.extend([system_msg, user_msg])
