@@ -28,5 +28,7 @@ COPY . .
 EXPOSE 8080
 
 # 8. Команда по умолчанию — запуск Gunicorn
-CMD ["gunicorn", "achievka_backend.wsgi:application", "--bind", "0.0.0.0:8080", "--workers", "3"]
-
+CMD ["gunicorn", "achievka_backend.wsgi:application", \
+     "--bind", "0.0.0.0:8080", \
+     "--workers", "3", \
+     "--timeout", "120"]
