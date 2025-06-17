@@ -52,7 +52,10 @@ class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         source='user.email', read_only=True
     )
-
+    has_subscription = serializers.BooleanField(
+        source='user.has_subscription',
+        read_only=True
+    )
     class Meta:
         model  = Profile
         fields = (
@@ -62,6 +65,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             'bio',
             'avatar',
             'updated_at',
+            'has_subscription',
+
         )
         read_only_fields = ('updated_at',)
 
