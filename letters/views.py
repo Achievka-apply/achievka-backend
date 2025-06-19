@@ -1,5 +1,3 @@
-# letters/views.py
-
 import logging
 import time
 import boto3
@@ -15,7 +13,6 @@ from rest_framework.response import Response
 from .models import Letter, LetterVersion, VersionMessage, DraftLetter, DraftAnswer, DraftSection
 from .serializers import LetterSerializer, LetterVersionSerializer,DraftLetterSerializer, DraftAnswerSerializer, DraftSectionSerializer
 from .s3_utils import upload_letter_text,  upload_draft_section
-
 # Устанавливаем API-ключ
 openai.api_key = settings.OPENAI_API_KEY
 
@@ -95,24 +92,67 @@ class LetterViewSet(viewsets.ModelViewSet):
             return Response({"locked": True},
                             status=status.HTTP_402_PAYMENT_REQUIRED)
 
-        version_num = request.data.get("version_num")
-        if not version_num:
-            return Response({"detail": "version_num is required"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # получаем нужную версию
-        try:
-            version = letter.versions.get(version_num=version_num)
-        except LetterVersion.DoesNotExist:
-            return Response({"detail": "Version not found"},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # читаем текст письма из S3
+        data = request.data
+        version_num = data.get("version_num")
         s3 = boto3.client("s3", region_name=settings.AWS_REGION)
-        obj = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=version.s3_key)
-        letter_text = obj["Body"].read().decode("utf-8")
 
-        # историю прошлых сообщений
+        # если version_num не передан — формируем текст из входных полей
+        if not version_num:
+            if letter.type == "motivation":
+                program    = data.get("program")
+                university = data.get("university")
+                if not program or not university:
+                    return Response({"detail": "program и university обязательны"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                letter_text = f"Program: {program}\nUniversity: {university}"
+
+            elif letter.type == "common_app":
+                prompt = data.get("essay_prompt")
+                if not prompt:
+                    return Response({"detail": "essay_prompt обязателен"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                letter_text = prompt
+
+            elif letter.type == "ucas":
+                program = data.get("program")
+                if not program:
+                    return Response({"detail": "program обязателен"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                letter_text = program
+
+            else:
+                return Response({"detail": f"Unknown letter type {letter.type}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            # создаём новую версию в S3 и БД
+            last = letter.versions.order_by("-version_num").first()
+            next_num = (last.version_num + 1) if last else 1
+            s3_key = upload_letter_text(
+                user_id=str(request.user.id),
+                letter_id=str(letter.id),
+                version_num=next_num,
+                text=letter_text
+            )
+            version = LetterVersion.objects.create(
+                letter=letter,
+                version_num=next_num,
+                s3_key=s3_key
+            )
+
+        else:
+            # старая логика: получаем существующую версию и читаем её из S3
+            try:
+                version = letter.versions.get(version_num=version_num)
+            except LetterVersion.DoesNotExist:
+                return Response({"detail": "Version not found"},
+                                status=status.HTTP_404_NOT_FOUND)
+            obj = s3.get_object(
+                Bucket=settings.AWS_S3_BUCKET,
+                Key=version.s3_key
+            )
+            letter_text = obj["Body"].read().decode("utf-8")
+
+        # история прошлых сообщений
         prev_messages = [
             {"role": msg.role, "content": msg.content}
             for msg in version.messages.all()
@@ -128,9 +168,8 @@ class LetterViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # добавляем в thread и историю, и текущее сообщение
-        all_messages = prev_messages + [{"role": "user", "content": letter_text}]
-        for m in all_messages:
+        # добавляем все сообщения в thread
+        for m in prev_messages + [{"role": "user", "content": letter_text}]:
             try:
                 openai.beta.threads.messages.create(
                     thread_id=thread.id,
@@ -225,6 +264,7 @@ class LetterViewSet(viewsets.ModelViewSet):
 
         # возвращаем распарсенный JSON
         return Response(data, status=status.HTTP_200_OK)
+
 
 
 
