@@ -7,6 +7,8 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework.routers import DefaultRouter
+from letters.views import DraftLetterViewSet
 
 # API definition
 schema_view = get_schema_view(
@@ -21,6 +23,8 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
+router = DefaultRouter()
+router.register(r'draft_letters', DraftLetterViewSet, basename='draft_letter')
 
 urlpatterns = [
     path('api/admin/', admin.site.urls),

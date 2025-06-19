@@ -13,6 +13,16 @@ def upload_letter_text(user_id: str, letter_id: str, version_num: int, text: str
     )
     return key
 
+def upload_draft_section(user_id: str, draft_id: str, section_key: str, text: str) -> str:
+    key = f"user_{user_id}/draft_{draft_id}/section_{section_key}.txt"
+    s3 = boto3.client('s3', region_name=settings.AWS_REGION)
+    s3.put_object(
+        Bucket=settings.AWS_S3_BUCKET,
+        Key=key,
+        Body=text.encode('utf-8'),
+        ContentType='text/plain'
+    )
+    return key
 
 def get_presigned_url(key: str, expires_in: int = 900) -> str:
     s3 = boto3.client('s3', region_name=settings.AWS_REGION)

@@ -12,9 +12,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Letter, LetterVersion, VersionMessage
-from .serializers import LetterSerializer, LetterVersionSerializer
-from .s3_utils import upload_letter_text
+from .models import Letter, LetterVersion, VersionMessage, DraftLetter, DraftAnswer, DraftSection
+from .serializers import LetterSerializer, LetterVersionSerializer,DraftLetterSerializer, DraftAnswerSerializer, DraftSectionSerializer
+from .s3_utils import upload_letter_text,  upload_draft_section
 
 # Устанавливаем API-ключ
 openai.api_key = settings.OPENAI_API_KEY
@@ -225,3 +225,120 @@ class LetterViewSet(viewsets.ModelViewSet):
 
         # возвращаем распарсенный JSON
         return Response(data, status=status.HTTP_200_OK)
+
+
+
+
+class DraftLetterViewSet(viewsets.ModelViewSet):
+    queryset = DraftLetter.objects.all()
+    serializer_class = DraftLetterSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['get'], url_path='answers')
+    def list_answers(self, request, pk=None):
+        draft = self.get_object()
+        serializer = DraftAnswerSerializer(draft.answers, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='answers')
+    def save_answer(self, request, pk=None):
+        draft = self.get_object()
+        data = request.data
+        answer, _ = DraftAnswer.objects.update_or_create(
+            draft_letter=draft,
+            question_key=data['question_key'],
+            defaults={
+                'answer_text': data.get('answer_text', ''),
+                'order': data.get('order', 0)
+            }
+        )
+        return Response(DraftAnswerSerializer(answer).data,
+                        status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='generate_structure')
+    def generate_structure(self, request, pk=None):
+        draft = self.get_object()
+
+        # gating
+        if not getattr(request.user, 'has_subscription', False):
+            draft.status = 'locked'
+            draft.save()
+            return Response({"locked": True}, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        # собираем вопросы и ответы
+        qa = [
+            {"key": a.question_key, "answer": a.answer_text}
+            for a in draft.answers.order_by('order')
+        ]
+
+        # выбираем assistant_id
+        assistant_map = {
+            "common_app_create": settings.ASSISTANT_COMMON_APP_CREATE_ID,
+            "ucas_create":       settings.ASSISTANT_UCAS_CREATE_ID,
+            "motivation_create": settings.ASSISTANT_MOTIVATION_CREATE_ID,
+        }
+        assistant_id = assistant_map.get(draft.type)
+        if not assistant_id:
+            return Response({"detail": "Unknown draft type"}, status=400)
+
+        # создаём thread и заливаем сообщения
+        thread = openai.beta.threads.create()
+        for qa_item in qa:
+            openai.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=json.dumps(qa_item)
+            )
+
+        # запускаем run
+        run = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=assistant_id)
+        while run.status in ("queued", "in_progress"):
+            time.sleep(1)
+            run = openai.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+
+        msgs = openai.beta.threads.messages.list(thread_id=thread.id)
+        if not msgs.data:
+            return Response({"detail": "No assistant response"}, status=500)
+
+        reply = msgs.data[0].content[0].text.value
+        try:
+            payload = json.loads(reply)
+        except json.JSONDecodeError:
+            return Response({"detail": "Invalid JSON", "raw": reply}, status=500)
+
+        # очищаем старые секции и сохраняем новые
+        draft.sections.all().delete()
+        for idx, sec in enumerate(payload.get('sections', []), start=1):
+            DraftSection.objects.create(
+                draft_letter=draft,
+                section_key=sec['key'],
+                prompt_hint=sec['prompt_hint'],
+                tone_style=sec['tone_style'],
+                order=idx
+            )
+        draft.status = 'generated'
+        draft.save()
+
+        serializer = DraftSectionSerializer(draft.sections, many=True)
+        return Response(serializer.data, status=200)
+
+    @action(detail=True, methods=['patch'], url_path='sections/(?P<section_id>[^/.]+)')
+    def update_section_text(self, request, pk=None, section_id=None):
+        draft = self.get_object()
+        section = draft.sections.get(id=section_id)
+        section.user_text = request.data.get('user_text', '')
+        section.save()
+        # также сохраняем в S3
+        upload_draft_section(
+            user_id=str(request.user.id),
+            draft_id=str(draft.id),
+            section_key=section.section_key,
+            text=section.user_text
+        )
+        return Response(DraftSectionSerializer(section).data)
