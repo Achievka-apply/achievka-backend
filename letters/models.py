@@ -1,4 +1,3 @@
-#models.py
 import uuid
 from django.conf import settings
 from django.db import models
@@ -13,14 +12,40 @@ STATUS_CHOICES = [
     ('generated', 'Сгенерирована'),
     ('locked', 'Нужна подписка'),
 ]
+
 class Letter(models.Model):
-    id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user       = models.ForeignKey(settings.AUTH_USER_MODEL,
-                                   on_delete=models.CASCADE,
-                                   related_name='letters')
-    name       = models.CharField(max_length=255)  # произвольное имя письма
-    type       = models.CharField(max_length=20, choices=LETTER_TYPES)
-    program    = models.CharField(max_length=255)  # или FK на модель Program
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='letters'
+    )
+    name = models.CharField(max_length=255)  # произвольное имя письма
+    type = models.CharField(max_length=20, choices=LETTER_TYPES)
+    # Поля, специфичные для разных типов писем:
+    program = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Для motivation и ucas'
+    )
+    university = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Только для motivation'
+    )
+    essay_prompt = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Только для common_app'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        help_text='Статус проверки письма'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -28,14 +53,16 @@ class Letter(models.Model):
         return f"{self.name} ({self.get_type_display()})"
 
 class LetterVersion(models.Model):
-    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    letter      = models.ForeignKey(Letter,
-                                    on_delete=models.CASCADE,
-                                    related_name='versions')
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    letter = models.ForeignKey(
+        Letter,
+        on_delete=models.CASCADE,
+        related_name='versions'
+    )
     version_num = models.IntegerField()
-    s3_key      = models.CharField(max_length=1024)
-    created_at  = models.DateTimeField(auto_now_add=True)
-    checked_at  = models.DateTimeField(null=True, blank=True)
+    s3_key = models.CharField(max_length=1024)
+    created_at = models.DateTimeField(auto_now_add=True)
+    checked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('letter', 'version_num')
@@ -49,11 +76,18 @@ class VersionMessage(models.Model):
     Хранит последовательность сообщений (system/user/assistant)
     для каждой версии письма.
     """
-    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    version      = models.ForeignKey(LetterVersion, on_delete=models.CASCADE, related_name='messages')
-    role         = models.CharField(max_length=20, choices=[('system','system'),('user','user'),('assistant','assistant')])
-    content      = models.TextField()
-    created_at   = models.DateTimeField(auto_now_add=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    version = models.ForeignKey(
+        LetterVersion,
+        on_delete=models.CASCADE,
+        related_name='messages'
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=[('system','system'), ('user','user'), ('assistant','assistant')]
+    )
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['created_at']
